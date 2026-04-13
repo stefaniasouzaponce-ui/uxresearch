@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>UX Research · Self-Checkout</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* ============================
+   TOKENS & RESET
+   ============================ */
+:root {
+  /* Form (light) */
+  --bg: #F5F2EB;
+  --surface: #FFFFFF;
+  --ink: #00445B;
+  --ink-soft: #6B6560;
+  --accent: #AFF6FF;
+  --accent-light: #E6FDFF;
+  --observe: #2563EB;
+  --observe-light: #EFF6FF;
+  --border: #E0DAD0;
+  --tag-bg: #00445B;
+  --radius: 10px;
+
+  /* Dash (dark) */
+  --d-bg: #021E2A;
+  --d-surface: #042D3D;
+  --d-surface2: #073448;
+  --d-border: #0D4E65;
+  --d-ink: #F0EFE8;
+  --d-ink-soft: #7A7A8A;
+  --d-ink-mute: #1A5F78;
+  --d-accent: #AFF6FF;
+  --d-accent2: #FFB547;
+  --d-teal: #2EDAAC;
+  --d-blue: #4A8FFF;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+
+/* ============================
+   APP SHELL — two screens
+   ============================ */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ============================
+   SHARED NAV TAB BAR
+   ============================ */
+.tab-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  display: flex;
+  background: var(--ink);
+  border-top: 1px solid #0D4E65;
+  height: 54px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: #7BBDCE;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all .2s;
+  padding: 0 8px;
+}
+
+.tab-btn .tab-icon { font-size: 16px; line-height: 1; }
+.tab-btn.active { color: var(--accent); }
+.tab-btn.active .tab-icon { transform: scale(1.1); }
+
+/* Divider between tabs */
+.tab-btn:not(:last-child) { border-right: 1px solid #0D4E65; }
+
+/* Badge on dash tab */
+.tab-badge {
+  position: absolute;
+  top: 6px;
+  {background: var(--accent);}
+  color: white;
+  font-size: 8px;
+  font-family: 'DM Mono', monospace;
+  padding: 1px 5px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+/* ============================
+   FORM SCREEN
+   ============================ */
+#screen-form { background: var(--bg); padding-bottom: 70px; }
+
+.form-header {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 18px 20px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+
+.form-header h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.header-meta { font-size: 11.5px; color: #7BBDCE; margin-top: 3px; font-weight: 300; }
+
+.timer-badge {
+  {background: var(--accent);}
+  color: white;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.session-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.sf { display: flex; flex-direction: column; gap: 3px; }
+.sf label { font-size: 10px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); }
+.sf input {
+  font-family: 'Nunito', sans-serif; font-size: 12.5px;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 8px; background: var(--bg); color: var(--ink); outline: none;
+}
+.sf input:focus { border-color: var(--accent); }
+.fw80 { width: 75px; } .fw120 { width: 115px; } .fw160 { width: 155px; }
+
+.form-content { padding: 16px 16px 0; max-width: 680px; margin: 0 auto; }
+
+/* Progress */
+.prog-wrap { margin-bottom: 14px; }
+.prog-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.prog-top span { font-size: 11.5px; font-family: 'DM Mono', monospace; color: var(--ink-soft); }
+.prog-bar { background: var(--border); border-radius: 10px; height: 4px; overflow: hidden; }
+.prog-fill { height: 100%; background: #00445B; border-radius: 10px; width: 0%; transition: width .4s ease; }
+
+/* Sections */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.sec-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sec-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 10.5px;
+  background: var(--tag-bg);
+  color: #F5F2EB;
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.sec-obs .sec-num { background: var(--observe); }
+.sec-obs .sec-head { background: var(--observe-light); border-bottom-color: #BFDBFE; }
+.sec-obs .sec-title { color: var(--observe); }
+
+.sec-title { font-size: 13.5px; font-weight: 700; flex: 1; }
+.sec-time { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--ink-soft); }
+
+.sec-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.qb { display: flex; flex-direction: column; gap: 6px; }
+.q-label { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.q-tip { font-size: 11.5px; color: var(--ink-soft); font-style: italic; line-height: 1.4; }
+.obs-tag { display:inline-block; font-size:9.5px; font-family:'DM Mono',monospace; background:var(--observe-light); color:var(--observe); border-radius:3px; padding:1px 5px; margin-left:4px; vertical-align:middle; }
+
+/* Chips */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: none; }
+.chip + label {
+  display: inline-block; padding: 6px 12px; font-size: 12px;
+  border: 1.5px solid var(--border); border-radius: 20px;
+  cursor: pointer; transition: all .15s; user-select: none;
+  color: var(--ink); background: var(--bg);
+}
+.chip:checked + label { background: var(--ink); border-color: var(--ink); color: white; }
+.chip.ac:checked + label { background: var(--accent); border-color: var(--accent); color: #00445B; }
+
+/* Scale */
+.scale-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.scale-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.scale-item input[type="radio"] { display: none; }
+.scale-item label {
+  width: 38px; height: 38px; border: 1.5px solid var(--border); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
+  background: var(--bg); font-family: 'DM Mono', monospace;
+}
+.scale-item input[type="radio"]:checked + label { background: var(--accent); border-color: var(--accent); color: #00445B; }
+.scale-ends { display: flex; justify-content: space-between; }
+.scale-end { font-size: 10px; color: var(--ink-soft); font-family: 'DM Mono', monospace; }
+
+/* Checkboxes */
+.chk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chk-item {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 7px;
+  cursor: pointer; background: var(--bg); transition: border-color .15s;
+}
+.chk-item input { display: none; }
+.chk-item:has(input:checked) { border-color: var(--accent); background: var(--accent-light); }
+.chk-box {
+  width: 15px; height: 15px; border: 1.5px solid var(--border); border-radius: 3px;
+  flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: transparent; background: white; transition: all .15s;
+}
+.chk-item:has(input:checked) .chk-box { background: var(--accent); border-color: var(--accent); color: #00445B; }
+.chk-item:has(input:checked) .chk-box::after { content: '✓'; }
+.chk-text { font-size: 12px; line-height: 1.35; }
+
+/* Textareas / Inputs */
+textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 7px; padding: 8px 11px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--ink); background: var(--bg);
+  resize: vertical; outline: none; line-height: 1.5; min-height: 58px;
+}
+textarea:focus { border-color: var(--accent); }
+
+.open-input {
+  width: 100%; border: none; border-bottom: 1.5px solid var(--border);
+  padding: 5px 2px; font-family: 'Nunito', sans-serif; font-size: 13px;
+  color: var(--ink); background: transparent; outline: none;
+}
+.open-input:focus { border-bottom-color: var(--accent); }
+
+/* Bottom cards */
+.bot-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+
+.bot-title { font-size: 13px; font-weight: 700; }
+
+.btn {
+  border: none; border-radius: 8px; padding: 12px 16px;
+  font-family: 'Nunito', sans-serif; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; width: 100%; transition: all .2s;
+}
+.btn-accent { background: var(--accent); color: #00445B; font-weight: 700; }
+.btn-accent:hover { background: #7BDEDF; color: #00445B; }
+.btn-dark { background: var(--ink); color: var(--bg); }
+.btn-dark:hover { background: #0D4E65; }
+.btn-dash {
+  background: #021E2A;
+  color: #F0EFE8;
+  border: 1.5px solid #0D4E65;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-dash:hover { background: #073448; border-color: #AFF6FF; }
+.btn-dash .dash-arrow { font-size: 15px; transition: transform .2s; }
+.btn-dash:hover .dash-arrow { transform: translateX(3px); }
+
+#sessions-wrap { display: none; }
+#sessions-list { font-size: 11.5px; color: var(--ink-soft); font-family: 'DM Mono', monospace; line-height: 2; }
+
+/* ============================
+   DASHBOARD SCREEN
+   ============================ */
+#screen-dash {
+  background: var(--d-bg);
+  color: var(--d-ink);
+  font-family: 'Nunito', sans-serif;
+  padding-bottom: 70px;
+}
+
+.dash-app { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.d-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--d-surface); border-right: 1px solid var(--d-border);
+  display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; bottom: 54px;
+  z-index: 50; overflow-y: auto;
+}
+
+.d-logo {
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid var(--d-border);
+}
+
+.d-logo-label {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--d-accent); margin-bottom: 4px;
+}
+
+.d-logo-title {
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+  line-height: 1.25; color: var(--d-ink);
+}
+
+.d-nav-section { padding: 14px 16px 6px; }
+.d-nav-section-title {
+  font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--d-ink-soft); margin-bottom: 7px;
+}
+
+.d-nav-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 9px; border-radius: 7px; border: none;
+  background: transparent; color: var(--d-ink-soft); cursor: pointer;
+  font-family: 'Nunito', sans-serif; font-size: 12.5px; font-weight: 400;
+  text-align: left; transition: all .15s; margin-bottom: 2px;
+}
+.d-nav-btn:hover { background: var(--d-surface2); color: var(--d-ink); }
+.d-nav-btn.active { background: var(--d-accent); color: #00445B; font-weight: 700; }
+.d-nav-btn .nav-icon { font-size: 13px; flex-shrink: 0; }
+.d-nav-btn .nav-count {
+  margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px;
+  background: var(--d-border); color: var(--d-ink-soft); padding: 1px 5px; border-radius: 8px;
+}
+.d-nav-btn.active .nav-count { background: rgba(255,255,255,.2); color: white; }
+
+.d-sess-section { padding: 6px 16px 12px; flex: 1; overflow-y: auto; }
+.d-sess-section-title {
+  font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--d-ink-soft); margin-bottom: 8px; padding-top: 8px;
+}
+
+.s-chip {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 9px; border-radius: 7px; border: 1px solid var(--d-border);
+  margin-bottom: 5px; cursor: pointer; transition: all .15s;
+  background: transparent; width: 100%; text-align: left;
+}
+.s-chip:hover { border-color: var(--d-accent); background: rgba(175,246,255,.05); }
+.s-chip.sel { border-color: var(--d-accent); background: rgba(175,246,255,.08); }
+.s-chip.sel .sc-id { color: var(--d-accent); }
+.sc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.sc-info { flex: 1; min-width: 0; }
+.sc-id { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: var(--d-ink); }
+.sc-meta { font-size: 10px; color: var(--d-ink-soft); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-score { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 2px 5px; border-radius: 4px; }
+
+.no-sess-msg { text-align: center; padding: 28px 14px; color: var(--d-ink-soft); font-size: 12px; line-height: 1.6; }
+
+/* Main content */
+.d-main { margin-left: 240px; flex: 1; min-height: 100vh; }
+
+.d-topbar { padding: 18px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+.d-page-title { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 800; color: var(--d-ink); }
+
+/* Filter bar */
+.filter-bar {
+  margin: 14px 24px 0;
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--d-ink-soft);
+  white-space: nowrap;
+}
+
+.filter-select {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--d-surface2);
+  color: var(--d-ink);
+  border: 1px solid var(--d-border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+  min-width: 140px;
+}
+.filter-select:focus { border-color: var(--d-accent); }
+
+.filter-input {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  background: var(--d-surface2);
+  color: var(--d-ink);
+  border: 1px solid var(--d-border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color .15s;
+  width: 130px;
+}
+.filter-input:focus { border-color: var(--d-accent); }
+
+.filter-divider { width: 1px; height: 22px; background: var(--d-border); flex-shrink: 0; }
+
+.filter-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(175,246,255,.1);
+  border: 1px solid rgba(175,246,255,.3);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--d-accent);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.filter-clear {
+  background: none;
+  border: 1px solid var(--d-border);
+  border-radius: 6px;
+  color: var(--d-ink-soft);
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.filter-clear:hover { border-color: var(--d-accent); color: var(--d-accent); }
+
+.d-content { padding: 14px 24px; }
+
+.d-view { display: none; }
+.d-view.active { display: block; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--d-surface); border: 1px solid var(--d-border); border-radius: 10px;
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; }
+.stat-card.ca::before { background: var(--d-accent); }
+.stat-card.cy::before { background: var(--d-accent2); }
+.stat-card.ct::before { background: var(--d-teal); }
+.stat-card.cb::before { background: var(--d-blue); }
+.stat-label { font-family:'DM Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--d-ink-soft); margin-bottom:7px; }
+.stat-value { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; line-height:1; color:var(--d-ink); }
+.stat-sub { font-size:11px; color:var(--d-ink-soft); margin-top:5px; }
+
+/* Charts */
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.chart-card { background:var(--d-surface); border:1px solid var(--d-border); border-radius:10px; padding:18px; }
+.chart-title { font-family:'Syne',sans-serif; font-size:12.5px; font-weight:700; margin-bottom:14px; color:var(--d-ink); }
+
+.bar-row { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.bar-label { font-size:11px; color:var(--d-ink-soft); width:120px; flex-shrink:0; text-align:right; line-height:1.3; }
+.bar-track { flex:1; height:20px; background:var(--d-surface2); border-radius:4px; overflow:hidden; position:relative; }
+.bar-fill { height:100%; border-radius:4px; transition:width .6s; position:relative; }
+.bar-val { position:absolute; right:6px; top:50%; transform:translateY(-50%); font-family:'DM Mono',monospace; font-size:10px; font-weight:500; color:#00445B; }
+
+.scale-dots { display:flex; gap:5px; justify-content:space-between; margin-bottom:7px; }
+.s-dot-col { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.s-dot {
+  width:40px; height:40px; border-radius:9px; background:var(--d-surface2);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Syne',sans-serif; font-size:15px; font-weight:800; transition:all .3s;
+}
+.s-dot-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--d-ink-soft); }
+.s-dot-count { font-size:10px; color:var(--d-ink-soft); }
+
+/* Friction */
+.friction-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.friction-item {
+  background:var(--d-surface2); border-radius:8px; padding:11px;
+  position:relative; overflow:hidden;
+}
+.friction-bar-bg { position:absolute; bottom:0;left:0;right:0; background:rgba(175,246,255,.1); transition:height .5s; }
+.friction-name { font-size:11px; font-weight:500; position:relative; z-index:1; line-height:1.3; }
+.friction-count { font-family:'DM Mono',monospace; font-size:19px; font-weight:500; color:var(--d-accent); margin-top:3px; position:relative;z-index:1; }
+.friction-pct { font-family:'DM Mono',monospace; font-size:9.5px; color:var(--d-ink-soft); position:relative;z-index:1; }
+
+/* Sessions table */
+.d-table-wrap { overflow-x:auto; }
+.d-table { width:100%; border-collapse:collapse; }
+.d-table th { font-family:'DM Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--d-ink-soft); padding:9px 12px; text-align:left; border-bottom:1px solid var(--d-border); font-weight:500; white-space:nowrap; }
+.d-table td { padding:11px 12px; border-bottom:1px solid var(--d-border); font-size:12px; vertical-align:middle; }
+.d-table tr:last-child td { border-bottom:none; }
+.d-table tbody tr:hover td { background:var(--d-surface2); cursor:pointer; }
+
+.score-pill { display:inline-flex; align-items:center; justify-content:center; width:26px;height:26px; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; font-weight:500; }
+.s1 { background:rgba(175,246,255,.2); color:var(--d-accent); }
+.s2,.s3 { background:rgba(255,181,71,.2); color:var(--d-accent2); }
+.s4,.s5 { background:rgba(46,218,172,.2); color:var(--d-teal); }
+
+.chip-sm { display:inline-block; padding:2px 6px; border-radius:4px; font-size:10px; background:var(--d-surface2); border:1px solid var(--d-border); color:var(--d-ink-soft); white-space:nowrap; }
+.prob-dot { display:inline-block; width:7px;height:7px; border-radius:50%; margin-right:4px; }
+.pnao { background:var(--d-teal); } .ppeq { background:var(--d-accent2); } .pbas { background:var(--d-accent); }
+
+.row-expand { display:none; }
+.row-expand.open { display:table-row; }
+.row-expand td { padding:0; }
+.expand-inner { padding:12px 12px 12px 34px; background:rgba(175,246,255,.03); border-bottom:1px solid var(--d-border); }
+.expand-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.expand-label { font-family:'DM Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--d-ink-soft); margin-bottom:4px; }
+.expand-val { font-size:12px; line-height:1.5; color:var(--d-ink); }
+.expand-val.q { font-style:italic; color:var(--d-ink-soft); }
+
+/* Verbatims */
+.verbatims-wrap { display:flex; flex-direction:column; gap:9px; }
+.vcard {
+  background:var(--d-surface2); border:1px solid var(--d-border); border-left:3px solid var(--d-accent);
+  border-radius:8px; padding:13px 15px; cursor:pointer; transition:border-color .15s;
+}
+.vcard:hover { border-left-color: var(--d-accent2); }
+.vquote { font-size:13px; font-weight:300; line-height:1.6; color:var(--d-ink); font-style:italic; }
+.vmeta { display:flex; gap:7px; align-items:center; margin-top:7px; flex-wrap:wrap; }
+.vtag { font-family:'DM Mono',monospace; font-size:9.5px; padding:2px 6px; border-radius:4px; background:var(--d-surface); color:var(--d-ink-soft); }
+.vtag.vf { background:rgba(175,246,255,.2); color:#00445B; }
+.vtag.vc { background:rgba(46,218,172,.12); color:var(--d-teal); }
+
+/* Compare */
+.compare-row { background:var(--d-surface); border:1px solid var(--d-border); border-radius:10px; overflow:hidden; margin-bottom:9px; }
+.compare-row-head { padding:11px 15px; border-bottom:1px solid var(--d-border); background:var(--d-surface2); font-family:'DM Mono',monospace; font-size:9.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--d-ink-soft); }
+.compare-cells { display:flex; overflow-x:auto; }
+.compare-cell { flex:1; min-width:170px; padding:12px 15px; border-right:1px solid var(--d-border); }
+.compare-cell:last-child { border-right:none; }
+.cc-session { font-family:'DM Mono',monospace; font-size:9.5px; color:var(--d-ink-soft); margin-bottom:5px; }
+.cc-val { font-size:12.5px; font-weight:500; color:var(--d-ink); }
+.cc-val.q { font-style:italic; font-weight:300; font-size:12px; line-height:1.5; color:var(--d-ink-soft); }
+
+/* Empty states */
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; text-align:center; gap:10px; }
+.empty-icon { font-size:36px; }
+.empty-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:var(--d-ink); }
+.empty-sub { font-size:12.5px; color:var(--d-ink-soft); line-height:1.6; max-width:320px; }
+
+.del-btn { background:none; border:none; color:var(--d-ink-mute); cursor:pointer; font-size:12px; padding:3px 5px; border-radius:4px; transition:all .15s; }
+.del-btn:hover { color:var(--d-accent); background:rgba(175,246,255,.1); }
+
+/* ============================
+   TOAST
+   ============================ */
+.toast {
+  position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); border: 1px solid #0D4E65; border-left: 3px solid var(--accent);
+  color: #F5F2EB; padding: 10px 16px; border-radius: 8px;
+  font-size: 12.5px; box-shadow: 0 8px 28px rgba(0,0,0,.35);
+  opacity: 0; transition: all .3s ease;
+  z-index: 300; white-space: nowrap; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+#screen-dash ::-webkit-scrollbar-thumb { background: var(--d-border); }
+
+@media (max-width:640px) {
+  .chk-grid { grid-template-columns:1fr; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .charts-row { grid-template-columns:1fr; }
+  .d-sidebar { display:none; }
+  .d-main { margin-left:0; }
+  .expand-grid { grid-template-columns:1fr; }
+  .friction-grid { grid-template-columns:1fr 1fr; }
+}
+
+/* ============================
+   SYNC / SHEETS INTEGRATION
+   ============================ */
+.sync-bar {
+  background: var(--d-surface);
+  border-bottom: 1px solid var(--d-border);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+
+.sync-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.sync-dot.ok      { background: #2EDAAC; box-shadow: 0 0 6px #2EDAAC88; }
+.sync-dot.warn    { background: #FFB547; }
+.sync-dot.err     { background: #FF6B6B; }
+.sync-dot.pending { background: var(--d-ink-soft); }
+.sync-dot.spin    { background: var(--d-accent); animation: pulse .8s infinite alternate; }
+
+@keyframes pulse { from { opacity:.4; } to { opacity:1; } }
+
+.sync-text { color: var(--d-ink-soft); font-family: 'DM Mono', monospace; font-size: 10px; flex: 1; }
+.sync-text strong { color: var(--d-ink); }
+
+.sync-btn {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px; font-weight: 700;
+  background: transparent;
+  border: 1px solid var(--d-border);
+  border-radius: 6px;
+  color: var(--d-ink-soft);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sync-btn:hover { border-color: var(--d-accent); color: var(--d-accent); }
+.sync-btn.primary { background: var(--d-accent); border-color: var(--d-accent); color: #00445B; }
+.sync-btn.primary:hover { background: #7BDEDF; }
+
+.queue-badge {
+  background: rgba(255,181,71,.15);
+  border: 1px solid rgba(255,181,71,.3);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9.5px;
+  color: #FFB547;
+  display: none;
+}
+
+/* Setup modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(2,30,42,.85);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-box {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: 14px;
+  padding: 28px 24px;
+  max-width: 440px; width: 100%;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.modal-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 17px; font-weight: 800;
+  color: var(--d-ink);
+}
+.modal-sub { font-size: 12.5px; color: var(--d-ink-soft); line-height: 1.6; }
+.modal-sub a { color: var(--d-accent); }
+.modal-input {
+  width: 100%;
+  background: var(--d-surface2);
+  border: 1.5px solid var(--d-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  color: var(--d-ink);
+  outline: none;
+}
+.modal-input:focus { border-color: var(--d-accent); }
+.modal-input::placeholder { color: var(--d-ink-soft); }
+.modal-row { display: flex; gap: 8px; }
+
+/* Form sync indicator */
+.form-sync-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--ink-soft);
+  font-family: 'DM Mono', monospace;
+  padding: 2px 0;
+}
+.form-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; flex-shrink:0; }
+.form-sync-dot.ok { background: #2EDAAC; }
+.form-sync-dot.warn { background: #FFB547; }
+
+</style>
+</head>
+<body>
+
+<!-- =============================
+     SCREEN: FORM
+     ============================= -->
+<div class="screen active" id="screen-form">
+
+  <div class="form-header">
+    <div>
+      <div class="header-label">UX Research · Self-Checkout</div>
+      <h1>Roteiro de Pesquisa Presencial</h1>
+      <div class="header-meta">Preencher logo após o uso do terminal</div>
+    </div>
+    <div class="timer-badge">⏱ ~4 min</div>
+  </div>
+
+  <div class="session-bar">
+    <div class="sf"><label>Data</label><input type="date" id="f-date" class="fw120"></div>
+    <div class="sf"><label>Horário</label><input type="time" id="f-time" class="fw80"></div>
+    <div class="sf"><label>Loja / Unidade</label><input type="text" id="f-store" class="fw160" placeholder="Ex: Pinheiros #12"></div>
+    <div class="sf"><label>Pesquisador</label><input type="text" id="f-researcher" class="fw80" placeholder="Iniciais"></div>
+    <div class="sf"><label>ID Sessão</label><input type="text" id="f-session" readonly class="fw80" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-soft)"></div>
+  </div>
+
+  <div class="form-content">
+
+    <div class="prog-wrap">
+      <div class="prog-top"><span>Progresso</span><span id="prog-label">0 / 0</span></div>
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    </div>
+
+    <!-- OBS -->
+    <div class="section sec-obs">
+      <div class="sec-head">
+        <span class="sec-num">OBS</span>
+        <span class="sec-title">Observação Silenciosa <span style="font-weight:300;font-size:11.5px">— antes de abordar</span></span>
+      </div>
+      <div class="sec-body">
+        <div class="qb">
+          <span class="q-label">Perfil estimado <span class="obs-tag">obs</span></span>
+          <div class="chips">
+            <input class="chip" type="radio" name="obs-age" id="a1" value="18-30"><label for="a1">18–30</label>
+            <input class="chip" type="radio" name="obs-age" id="a2" value="31-45"><label for="a2">31–45</label>
+            <input class="chip" type="radio" name="obs-age" id="a3" value="46-60"><label for="a3">46–60</label>
+            <input class="chip" type="radio" name="obs-age" id="a4" value="60+"><label for="a4">60+</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Volume de itens <span class="obs-tag">obs</span></span>
+          <div class="chips">
+            <input class="chip" type="radio" name="obs-itens" id="i1" value="1-5"><label for="i1">1–5 itens</label>
+            <input class="chip" type="radio" name="obs-itens" id="i2" value="6-15"><label for="i2">6–15</label>
+            <input class="chip" type="radio" name="obs-itens" id="i3" value="16+"><label for="i3">16+</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Comportamentos observados <span class="obs-tag">obs</span></span>
+          <div class="chk-grid">
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="hesitou-inicio"><span class="chk-box"></span><span class="chk-text">Hesitou ao iniciar</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="releu-tela"><span class="chk-box"></span><span class="chk-text">Releu a tela várias vezes</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="pausas-longas"><span class="chk-box"></span><span class="chk-text">Pausas longas entre ações</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="chamou-atendente"><span class="chk-box"></span><span class="chk-text">Chamou atendente</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="erro-visivel"><span class="chk-box"></span><span class="chk-text">Erro / tela travou</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="sacola-balanca"><span class="chk-box"></span><span class="chk-text">Problema sacola/balança</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="pgto-multiplo"><span class="chk-box"></span><span class="chk-text">Múltiplas tentativas pgto</span></label>
+            <label class="chk-item"><input type="checkbox" name="obs-comp" value="sem-problema"><span class="chk-box"></span><span class="chk-text">Uso fluido, sem problemas</span></label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Nota de campo <span class="obs-tag">obs</span></span>
+          <span class="q-tip">Momento exato da maior fricção observada</span>
+          <textarea id="obs-nota" rows="2" placeholder="Ex: pausou ~20s na tela de sacola, tocou no terminal confuso..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 01 -->
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">01</span><span class="sec-title">Experiência Geral</span><span class="sec-time">~1 min</span></div>
+      <div class="sec-body">
+        <div class="qb">
+          <span class="q-label">Com que frequência você usa o self-checkout aqui?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="freq" id="fr1" value="primeira-vez"><label for="fr1">Primeira vez</label>
+            <input class="chip" type="radio" name="freq" id="fr2" value="raramente"><label for="fr2">Raramente</label>
+            <input class="chip" type="radio" name="freq" id="fr3" value="as-vezes"><label for="fr3">Às vezes</label>
+            <input class="chip" type="radio" name="freq" id="fr4" value="sempre"><label for="fr4">Sempre</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Como foi sua experiência hoje, no geral?</span>
+          <div class="scale-row">
+            <div class="scale-item"><input type="radio" name="exp-geral" id="eg1" value="1"><label for="eg1">1</label></div>
+            <div class="scale-item"><input type="radio" name="exp-geral" id="eg2" value="2"><label for="eg2">2</label></div>
+            <div class="scale-item"><input type="radio" name="exp-geral" id="eg3" value="3"><label for="eg3">3</label></div>
+            <div class="scale-item"><input type="radio" name="exp-geral" id="eg4" value="4"><label for="eg4">4</label></div>
+            <div class="scale-item"><input type="radio" name="exp-geral" id="eg5" value="5"><label for="eg5">5</label></div>
+          </div>
+          <div class="scale-ends"><span class="scale-end">Muito ruim</span><span class="scale-end">Excelente</span></div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Por que escolheu o self-checkout hoje?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="motivo" id="mo1" value="fila-menor"><label for="mo1">Fila menor</label>
+            <input class="chip" type="radio" name="motivo" id="mo2" value="poucos-itens"><label for="mo2">Poucos itens</label>
+            <input class="chip" type="radio" name="motivo" id="mo3" value="preferencia"><label for="mo3">Prefiro assim</label>
+            <input class="chip" type="radio" name="motivo" id="mo4" value="unico-aberto"><label for="mo4">Era o único aberto</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 -->
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">02</span><span class="sec-title">Dificuldades & Fricções</span><span class="sec-time">~1,5 min</span></div>
+      <div class="sec-body">
+        <div class="qb">
+          <span class="q-label">Teve algum problema ou dificuldade hoje?</span>
+          <div class="chips">
+            <input class="chip ac" type="radio" name="teve-prob" id="tp1" value="nao"><label for="tp1">Não, tranquilo</label>
+            <input class="chip ac" type="radio" name="teve-prob" id="tp2" value="pequeno"><label for="tp2">Pequeno problema</label>
+            <input class="chip ac" type="radio" name="teve-prob" id="tp3" value="bastante"><label for="tp3">Bastante dificuldade</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Qual etapa foi mais difícil? <span style="font-size:11.5px;color:var(--ink-soft);font-weight:400">(marque quantas quiser)</span></span>
+          <div class="chk-grid">
+            <label class="chk-item"><input type="checkbox" name="etapa" value="inicio-login"><span class="chk-box"></span><span class="chk-text">Iniciar / fazer login</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="escanear"><span class="chk-box"></span><span class="chk-text">Escanear item</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="sem-codigo"><span class="chk-box"></span><span class="chk-text">Item sem código (hortifrúti etc.)</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="sacola-balanca"><span class="chk-box"></span><span class="chk-text">Área de sacola / balança</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="cupom-desconto"><span class="chk-box"></span><span class="chk-text">Cupom / desconto / fidelidade</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="pagamento"><span class="chk-box"></span><span class="chk-text">Pagamento</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="erro-sistema"><span class="chk-box"></span><span class="chk-text">Erro / tela travada</span></label>
+            <label class="chk-item"><input type="checkbox" name="etapa" value="nenhuma"><span class="chk-box"></span><span class="chk-text">Nenhuma dificuldade</span></label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Me conta o que aconteceu nesse momento difícil.</span>
+          <span class="q-tip">Deixe a pessoa falar. Anote as palavras exatas, entre aspas.</span>
+          <textarea id="verbatim" rows="3" placeholder='"Coloquei no lugar certo mas ficou pedindo para colocar o item na sacola..."'></textarea>
+        </div>
+        <div class="qb">
+          <span class="q-label">Como resolveu?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="resolucao" id="re1" value="sozinho"><label for="re1">Sozinho</label>
+            <input class="chip" type="radio" name="resolucao" id="re2" value="atendente"><label for="re2">Chamei atendente</label>
+            <input class="chip" type="radio" name="resolucao" id="re3" value="reiniciou"><label for="re3">Reiniciou sozinho</label>
+            <input class="chip" type="radio" name="resolucao" id="re4" value="nao-resolveu"><label for="re4">Não resolveu</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 -->
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">03</span><span class="sec-title">Fluxo & Interface</span><span class="sec-time">~1 min</span></div>
+      <div class="sec-body">
+        <div class="qb">
+          <span class="q-label">As mensagens na tela foram claras?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="clareza" id="cl1" value="muito-claras"><label for="cl1">Muito claras</label>
+            <input class="chip" type="radio" name="clareza" id="cl2" value="ok"><label for="cl2">OK</label>
+            <input class="chip" type="radio" name="clareza" id="cl3" value="confusas"><label for="cl3">Confusas</label>
+            <input class="chip" type="radio" name="clareza" id="cl4" value="nao-li"><label for="cl4">Nem li</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Quando apareceu um erro ou alerta, o que você fez?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="reacao-erro" id="re5" value="li-resolvi"><label for="re5">Li e resolvi</label>
+            <input class="chip" type="radio" name="reacao-erro" id="re6" value="li-nao-entendi"><label for="re6">Li, não entendi</label>
+            <input class="chip" type="radio" name="reacao-erro" id="re7" value="chamei"><label for="re7">Chamei ajuda</label>
+            <input class="chip" type="radio" name="reacao-erro" id="re8" value="sem-erro"><label for="re8">Não teve erro</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Teve algum momento que você <em>não sabia o que fazer</em>?</span>
+          <span class="q-tip">Se sim, qual tela / situação?</span>
+          <input class="open-input" type="text" id="momento-perdido" placeholder="Descreva a situação ou qual tela apareceu...">
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 -->
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">04</span><span class="sec-title">Encerramento Rápido</span><span class="sec-time">~30 s</span></div>
+      <div class="sec-body">
+        <div class="qb">
+          <span class="q-label">Se pudesse mudar <strong>uma coisa</strong> no self-checkout, o que seria?</span>
+          <span class="q-tip">Pergunta aberta — anote literalmente, entre aspas.</span>
+          <textarea id="uma-mudanca" rows="2" placeholder='"Queria que reconhecesse meu clube de desconto automaticamente"'></textarea>
+        </div>
+        <div class="qb">
+          <span class="q-label">Você usaria novamente?</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="reuso" id="ru1" value="sim-sempre"><label for="ru1">Sim, sempre</label>
+            <input class="chip" type="radio" name="reuso" id="ru2" value="depende-fila"><label for="ru2">Depende da fila</label>
+            <input class="chip" type="radio" name="reuso" id="ru3" value="talvez"><label for="ru3">Talvez</label>
+            <input class="chip" type="radio" name="reuso" id="ru4" value="prefiro-caixa"><label for="ru4">Prefiro o caixa normal</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notas -->
+    <div class="bot-card">
+      <span class="bot-title">📝 Notas do pesquisador</span>
+      <span class="q-tip" style="color:var(--ink-soft)">Hipóteses, contexto do ambiente, algo fora do roteiro</span>
+      <textarea id="notas-pesq" rows="3" placeholder="Qualquer observação relevante que não estava no roteiro..."></textarea>
+    </div>
+
+    <!-- Save -->
+    <div class="bot-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="bot-title">Salvar resposta</span>
+        <span id="count-lbl" style="font-size:11.5px;color:var(--ink-soft)">—</span>
+      </div>
+      <div class="form-sync-row" id="form-sync-row">
+        <span class="form-sync-dot" id="form-sync-dot"></span>
+        <span id="form-sync-label">—</span>
+      </div>
+      <button class="btn btn-accent" onclick="saveSession()">💾 Salvar e iniciar nova sessão</button>
+      <button class="btn btn-dark" style="margin-top:-2px" onclick="downloadSingleCSV()">⬇ Baixar CSV desta sessão</button>
+    </div>
+
+    <div id="sessions-wrap" style="display:none">
+      <div class="bot-card">
+        <span class="bot-title">📋 Sessões salvas</span>
+        <div id="sessions-list"></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+          <button class="btn btn-dark" onclick="downloadAllCSV()">⬇ Exportar TODAS as sessões (CSV)</button>
+          <button class="btn btn-dash" onclick="goToDash()">
+            <span>📊 Ver Dashboard de Análise</span>
+            <span class="dash-arrow">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sheets config shortcut (visible when not configured) -->
+    <div class="bot-card" id="sheets-setup-card" style="border:1.5px dashed var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">🔗</span>
+        <div style="flex:1">
+          <div class="bot-title" style="font-size:12.5px">Google Sheets não configurado</div>
+          <div class="q-tip">Dados salvos só neste dispositivo. Configure para salvar na nuvem.</div>
+        </div>
+        <button class="btn btn-dark" style="width:auto;padding:8px 14px;font-size:12px" onclick="goToDash();setTimeout(openSetupModal,400)">Configurar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- =============================
+     SCREEN: DASHBOARD
+     ============================= -->
+<div class="screen" id="screen-dash">
+  <div class="dash-app">
+
+    <!-- Sidebar -->
+    <aside class="d-sidebar">
+      <div class="d-logo">
+        <div class="d-logo-label">UX Research</div>
+        <div class="d-logo-title">Self-Checkout<br>Dashboard</div>
+      </div>
+
+      <div class="d-nav-section">
+        <div class="d-nav-section-title">Navegação</div>
+        <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Visão Geral</button>
+        <button class="d-nav-btn" id="dnav-sessions" onclick="switchDashView('sessions')"><span class="nav-icon">☰</span> Sessões <span class="nav-count" id="d-count-badge">0</span></button>
+        <button class="d-nav-btn" id="dnav-compare" onclick="switchDashView('compare')"><span class="nav-icon">⇄</span> Comparar</button>
+        <button class="d-nav-btn" id="dnav-verbatims" onclick="switchDashView('verbatims')"><span class="nav-icon">❝</span> Verbatims</button>
+      </div>
+
+      <div class="d-sess-section">
+        <div class="d-sess-section-title">Sessões <span id="d-sess-total" style="color:var(--d-ink)">0</span></div>
+        <div id="d-sidebar-sessions"><div class="no-sess-msg" id="d-no-sess">Nenhuma sessão.<br>Preencha o formulário.</div></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="d-main">
+      <div class="d-topbar">
+        <div class="d-page-title" id="d-page-title">Visão Geral</div>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar" id="filter-bar">
+        <span class="filter-label">Filtrar por</span>
+        <select class="filter-select" id="f-loja" onchange="applyFilters()">
+          <option value="">Todas as lojas</option>
+        </select>
+        <div class="filter-divider"></div>
+        <span class="filter-label">De</span>
+        <input type="date" class="filter-input" id="f-de" onchange="applyFilters()">
+        <span class="filter-label">até</span>
+        <input type="date" class="filter-input" id="f-ate" onchange="applyFilters()">
+        <div class="filter-badge" id="filter-badge" style="display:none">
+          <span id="filter-badge-text">0 sessões</span>
+        </div>
+        <button class="filter-clear" id="filter-clear-btn" onclick="clearFilters()" style="display:none">✕ Limpar filtros</button>
+      </div>
+
+      <div class="d-content">
+
+        <!-- Overview -->
+        <div class="d-view active" id="dview-overview">
+          <div class="empty-state" id="d-ov-empty" style="display:none">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">Nenhum dado ainda</div>
+            <div class="empty-sub">Preencha o formulário e salve sessões para visualizar aqui.</div>
+          </div>
+          <div id="d-ov-content">
+            <div class="stats-grid" id="d-stats"></div>
+            <div class="charts-row" id="d-charts1"></div>
+            <div class="charts-row" id="d-charts2"></div>
+            <div id="d-friction"></div>
+          </div>
+        </div>
+
+        <!-- Sessions -->
+        <div class="d-view" id="dview-sessions">
+          <div class="empty-state" id="d-sess-empty" style="display:none">
+            <div class="empty-icon">🗂</div><div class="empty-title">Sem sessões</div>
+            <div class="empty-sub">Preencha o formulário para ver sessões aqui.</div>
+          </div>
+          <div class="d-table-wrap" id="d-table-wrap">
+            <table class="d-table" id="d-table">
+              <thead><tr>
+                <th></th><th>Sessão</th><th>Data</th><th>Loja</th>
+                <th>Idade</th><th>Itens</th><th>Freq.</th><th>Nota</th>
+                <th>Problema</th><th>Etapa difícil</th><th>Reuso</th><th></th>
+              </tr></thead>
+              <tbody id="d-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Compare -->
+        <div class="d-view" id="dview-compare">
+          <div class="empty-state" id="d-cmp-empty">
+            <div class="empty-icon">⇄</div><div class="empty-title">Selecione sessões</div>
+            <div class="empty-sub">Selecione 2 ou mais sessões na sidebar para comparar lado a lado.</div>
+          </div>
+          <div id="d-compare-content"></div>
+        </div>
+
+        <!-- Verbatims -->
+        <div class="d-view" id="dview-verbatims">
+          <div class="empty-state" id="d-verb-empty" style="display:none">
+            <div class="empty-icon">❝</div><div class="empty-title">Nenhum verbatim</div>
+            <div class="empty-sub">Sessões com respostas abertas preenchidas aparecerão aqui.</div>
+          </div>
+          <div class="verbatims-wrap" id="d-verbatims-list"></div>
+        </div>
+
+
+      <!-- SYNC STATUS BAR -->
+      <div class="sync-bar" id="sync-bar" style="display:none">
+        <span class="sync-dot pending" id="sync-dot"></span>
+        <span class="sync-text" id="sync-text">Não configurado</span>
+        <span class="queue-badge" id="queue-badge">0 na fila</span>
+        <button class="sync-btn" onclick="syncNow()" id="sync-now-btn">↑ Sincronizar agora</button>
+        <button class="sync-btn" onclick="pullFromSheets(false)" id="pull-btn">↓ Atualizar de todos os dispositivos</button>
+        <button class="sync-btn" onclick="openSetupModal()">⚙ Reconfigurar</button>
+      </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <button class="tab-btn active" id="tab-form" onclick="goToForm()">
+    <span class="tab-icon">📝</span>
+    Formulário
+  </button>
+  <button class="tab-btn" id="tab-dash" onclick="goToDash()" style="position:relative">
+    <span class="tab-icon">📊</span>
+    Dashboard
+    <span class="tab-badge" id="tab-badge" style="display:none">0</span>
+  </button>
+</nav>
+
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay" id="setup-modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">🔗 Conectar ao Google Sheets</div>
+    <div class="modal-sub">
+      Cole aqui a URL do seu <strong>Web App</strong> gerado no Google Apps Script.<br><br>
+      Passo a passo:<br>
+      1. Abra <a href="https://script.google.com" target="_blank">script.google.com</a><br>
+      2. Crie um projeto e cole o código <strong>Code.gs</strong><br>
+      3. Clique em <strong>Implantar → Nova implantação → App da Web</strong><br>
+      4. Executar como: <em>Eu mesmo</em> · Acesso: <em>Qualquer pessoa</em><br>
+      5. Copie a URL gerada e cole abaixo
+    </div>
+    <input class="modal-input" id="sheets-url-input" type="url"
+      placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="modal-row">
+      <button class="sync-btn" onclick="closeSetupModal()" style="flex:1">Cancelar</button>
+      <button class="sync-btn primary" onclick="saveAndTestUrl()" style="flex:2">💾 Salvar e testar conexão</button>
+    </div>
+    <div id="modal-test-result" style="font-size:11.5px;color:var(--d-ink-soft);font-family:'DM Mono',monospace;min-height:18px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================================
+// DATA & CONSTANTS
+// ================================
+let sessions = [];
+let selectedIds = new Set();
+let activeFilters = { loja: '', de: '', ate: '' };
+
+function filteredSessions() {
+  return sessions.filter(s => {
+    if (activeFilters.loja && s.loja !== activeFilters.loja) return false;
+    if (activeFilters.de && s.data && s.data < activeFilters.de) return false;
+    if (activeFilters.ate && s.data && s.data > activeFilters.ate) return false;
+    return true;
+  });
+}
+
+function populateFilterSelects() {
+  const lojas = [...new Set(sessions.map(s => s.loja).filter(Boolean))].sort();
+  const sel = document.getElementById('f-loja');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas as lojas</option>' +
+    lojas.map(l => `<option value="${l}" ${l===cur?'selected':''}>${l}</option>`).join('');
+}
+
+function applyFilters() {
+  activeFilters.loja = document.getElementById('f-loja').value;
+  activeFilters.de   = document.getElementById('f-de').value;
+  activeFilters.ate  = document.getElementById('f-ate').value;
+  const hasFilter = activeFilters.loja || activeFilters.de || activeFilters.ate;
+  const badge = document.getElementById('filter-badge');
+  const clearBtn = document.getElementById('filter-clear-btn');
+  if (hasFilter) {
+    const n = filteredSessions().length;
+    badge.style.display = 'flex';
+    document.getElementById('filter-badge-text').textContent = n + ' sessão' + (n !== 1 ? 'ões' : '');
+    clearBtn.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+    clearBtn.style.display = 'none';
+  }
+  renderOverview();
+  renderSessTable();
+  renderVerbatims();
+  renderCompare();
+}
+
+function clearFilters() {
+  activeFilters = { loja: '', de: '', ate: '' };
+  document.getElementById('f-loja').value = '';
+  document.getElementById('f-de').value = '';
+  document.getElementById('f-ate').value = '';
+  document.getElementById('filter-badge').style.display = 'none';
+  document.getElementById('filter-clear-btn').style.display = 'none';
+  applyFilters();
+}
+
+const SC = ['#AFF6FF','#FFB547','#FFB547','#2EDAAC','#2EDAAC'];
+const SCORE_COLORS = ['','#AFF6FF','#FFB547','#FFB547','#2EDAAC','#2EDAAC'];
+
+const LBL = {
+  freq: {'primeira-vez':'Primeira vez','raramente':'Raramente','as-vezes':'Às vezes','sempre':'Sempre'},
+  motivo: {'fila-menor':'Fila menor','poucos-itens':'Poucos itens','preferencia':'Preferência','unico-aberto':'Único aberto'},
+  'teve-prob': {'nao':'Sem problema','pequeno':'Pequeno','bastante':'Bastante'},
+  resolucao: {'sozinho':'Sozinho','atendente':'Atendente','reiniciou':'Reiniciou','nao-resolveu':'Não resolveu'},
+  reuso: {'sim-sempre':'Sim, sempre','depende-fila':'Depende da fila','talvez':'Talvez','prefiro-caixa':'Prefiro caixa'},
+  'obs-age': {'18-30':'18–30','31-45':'31–45','46-60':'46–60','60+':'60+'},
+  'obs-itens': {'1-5':'1–5 itens','6-15':'6–15','16+':'16+'},
+  clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
+  'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
+};
+
+const ETAPAS = {
+  'inicio-login':'Iniciar / Login','escanear':'Escanear item','sem-codigo':'Item sem código',
+  'sacola-balanca':'Sacola / Balança','cupom-desconto':'Cupom / Desconto',
+  'pagamento':'Pagamento','erro-sistema':'Erro / Tela travada','nenhuma':'Nenhuma',
+};
+
+const OBS_COMP = {
+  'hesitou-inicio':'Hesitou ao iniciar','releu-tela':'Releu tela','pausas-longas':'Pausas longas',
+  'chamou-atendente':'Chamou atendente','erro-visivel':'Erro visível','sacola-balanca':'Prob. sacola',
+  'pgto-multiplo':'Múltiplas tentativas','sem-problema':'Fluido',
+};
+
+function lbl(f, v) { return (!v) ? '—' : (LBL[f]&&LBL[f][v]) || v; }
+
+// ================================
+// NAVIGATION
+// ================================
+function goToForm() {
+  document.getElementById('screen-form').classList.add('active');
+  document.getElementById('screen-dash').classList.remove('active');
+  document.getElementById('tab-form').classList.add('active');
+  document.getElementById('tab-dash').classList.remove('active');
+}
+
+function goToDash() {
+  document.getElementById('screen-dash').classList.add('active');
+  document.getElementById('screen-form').classList.remove('active');
+  document.getElementById('tab-dash').classList.add('active');
+  document.getElementById('tab-form').classList.remove('active');
+  // Renderiza com cache local imediatamente (sem piscar)
+  renderDash();
+  // Sempre busca a versão mais recente do Sheets ao abrir o dashboard
+  if (getSheetsUrl()) pullFromSheets(true);
+}
+
+// ================================
+// FORM LOGIC
+// ================================
+const now = new Date();
+document.getElementById('f-date').value = now.toISOString().slice(0,10);
+document.getElementById('f-time').value = now.toTimeString().slice(0,5);
+newSid();
+
+function newSid() {
+  document.getElementById('f-session').value = 'S' + Math.random().toString(36).substr(2,5).toUpperCase();
+}
+
+function updateProgress() {
+  const rg = {};
+  document.querySelectorAll('input[type="radio"]').forEach(r => {
+    if (!rg[r.name]) rg[r.name] = false;
+    if (r.checked) rg[r.name] = true;
+  });
+  const rT = Object.keys(rg).length, rD = Object.values(rg).filter(Boolean).length;
+  const tIds = ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'];
+  let tT = tIds.length, tD = 0;
+  tIds.forEach(id => { if (document.getElementById(id)?.value.trim().length > 2) tD++; });
+  const total = rT + tT, done = rD + tD;
+  const pct = total > 0 ? Math.round(done/total*100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = done + ' / ' + total + ' campos';
+  document.getElementById('count-lbl').textContent = pct + '% preenchido';
+}
+
+document.addEventListener('change', updateProgress);
+document.addEventListener('input', updateProgress);
+
+function collectData() {
+  const d = {
+    session_id: document.getElementById('f-session').value,
+    data: document.getElementById('f-date').value,
+    horario: document.getElementById('f-time').value,
+    loja: document.getElementById('f-store').value,
+    pesquisador: document.getElementById('f-researcher').value,
+  };
+  document.querySelectorAll('input[type="radio"]:checked').forEach(r => { d[r.name] = r.value; });
+  const chks = {};
+  document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+    if (!chks[cb.name]) chks[cb.name] = [];
+    chks[cb.name].push(cb.value);
+  });
+  Object.keys(chks).forEach(k => d[k] = chks[k].join('|'));
+  ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) d[id] = el.value;
+  });
+  return d;
+}
+
+function resetForm() {
+  document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
+  document.querySelectorAll('textarea, input[type="text"]').forEach(el => { if (!el.readOnly) el.value = ''; });
+  const n = new Date();
+  document.getElementById('f-date').value = n.toISOString().slice(0,10);
+  document.getElementById('f-time').value = n.toTimeString().slice(0,5);
+  newSid();
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function saveSession() {
+  const data = collectData();
+  sessions.push(data);
+  saveSessions();
+  addToQueue(data);
+  updateSessionsList();
+  updateTabBadge();
+  resetForm();              // ← reseta o formulário imediatamente, sem esperar sync
+  showToast('💾 Sessão salva! Pronto para a próxima.');
+  // Sync em background — não bloqueia o formulário
+  if (getSheetsUrl()) syncNow();
+}
+
+function updateSessionsList() {
+  const wrap = document.getElementById('sessions-wrap');
+  const list = document.getElementById('sessions-list');
+  if (sessions.length > 0) {
+    wrap.style.display = 'block';
+    list.innerHTML = sessions.map(s =>
+      `<span style="font-family:'DM Mono',monospace;font-size:11px">${s.session_id} · ${s.data} ${s.horario} · ${s.loja||'—'} · nota: ${s['exp-geral']||'?'}/5</span>`
+    ).join('<br>');
+  }
+}
+
+function updateTabBadge() {
+  const badge = document.getElementById('tab-badge');
+  if (sessions.length > 0) {
+    badge.textContent = sessions.length;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toCSV(rows) {
+  if (!rows.length) return '';
+  const keys = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  return [keys.join(','), ...rows.map(r =>
+    keys.map(k => '"' + (r[k]||'').toString().replace(/"/g,'""') + '"').join(',')
+  )].join('\n');
+}
+
+function downloadCSV(rows, filename) {
+  const blob = new Blob(['\uFEFF' + toCSV(rows)], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
+function downloadSingleCSV() { downloadCSV([collectData()], 'ux_sc_' + document.getElementById('f-session').value + '.csv'); }
+function downloadAllCSV() {
+  if (!sessions.length) { showToast('⚠️ Nenhuma sessão salva ainda.'); return; }
+  downloadCSV(sessions, 'ux_selfcheckout_sessoes.csv');
+}
+
+// ================================
+// STORAGE + GOOGLE SHEETS SYNC
+// ================================
+
+const LS_SESSIONS  = 'ux_sc_sessions';
+const LS_URL       = 'ux_sc_sheets_url';
+const LS_QUEUE     = 'ux_sc_sync_queue';
+const LS_LAST_SYNC = 'ux_sc_last_sync';
+
+// ── Local storage ──────────────────────────────────────────
+function saveSessions() {
+  try { localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions)); } catch(e) {}
+}
+function loadSessions() {
+  try { const d = localStorage.getItem(LS_SESSIONS); if (d) sessions = JSON.parse(d); } catch(e) {}
+}
+
+// ── Queue (sessões aguardando envio) ───────────────────────
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem(LS_QUEUE) || '[]'); } catch(e) { return []; }
+}
+function saveQueue(q) {
+  try { localStorage.setItem(LS_QUEUE, JSON.stringify(q)); } catch(e) {}
+}
+function addToQueue(session) {
+  const q = getQueue();
+  if (!q.find(s => s.session_id === session.session_id)) { q.push(session); saveQueue(q); }
+  updateQueueBadge();
+}
+function removeFromQueue(ids) {
+  saveQueue(getQueue().filter(s => !ids.includes(s.session_id)));
+  updateQueueBadge();
+}
+function updateQueueBadge() {
+  const q = getQueue();
+  const badge = document.getElementById('queue-badge');
+  if (!badge) return;
+  badge.style.display = q.length > 0 ? 'inline' : 'none';
+  badge.textContent = q.length + ' na fila';
+}
+
+// ── Sheets URL ─────────────────────────────────────────────
+function getSheetsUrl() { return localStorage.getItem(LS_URL) || ''; }
+function setSheetsUrl(url) { localStorage.setItem(LS_URL, url); }
+
+// ── Status UI ──────────────────────────────────────────────
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  const bar = document.getElementById('sync-bar');
+  if (!dot) return;
+  bar.style.display = 'flex';
+  dot.className = 'sync-dot ' + state;
+  txt.innerHTML = text;
+}
+function setFormSyncStatus(state, text) {
+  const dot = document.getElementById('form-sync-dot');
+  const lbl = document.getElementById('form-sync-label');
+  if (!dot) return;
+  dot.className = 'form-sync-dot ' + state;
+  if (lbl) lbl.textContent = text;
+}
+
+// ── Setup modal ────────────────────────────────────────────
+function openSetupModal() {
+  document.getElementById('sheets-url-input').value = getSheetsUrl();
+  document.getElementById('modal-test-result').textContent = '';
+  document.getElementById('setup-modal').style.display = 'flex';
+}
+function closeSetupModal() {
+  document.getElementById('setup-modal').style.display = 'none';
+}
+
+// ── CORS-safe fetch para Apps Script ──────────────────────
+// O Apps Script exige que POST use text/plain (não application/json)
+// para não disparar preflight CORS. O JSON vai como string no body.
+async function sheetsGET(url) {
+  const r = await fetch(url + '?action=get', { method: 'GET' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function sheetsPOST(url, payload) {
+  // Enviamos como text/plain para evitar o preflight CORS do Apps Script
+  const r = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+    // SEM headers: { 'Content-Type': 'application/json' }  ← esse é o problema do CORS
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── Ping / teste de conexão ────────────────────────────────
+async function pingSheets(url) {
+  const r = await fetch(url + '?action=ping', { method: 'GET' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── Salvar e testar URL ────────────────────────────────────
+async function saveAndTestUrl() {
+  const url = document.getElementById('sheets-url-input').value.trim();
+  const res = document.getElementById('modal-test-result');
+  if (!url) { res.textContent = '⚠ Cole a URL antes de salvar.'; return; }
+  res.textContent = '⏳ Testando conexão...';
+  try {
+    const data = await pingSheets(url);
+    if (data.ok) {
+      setSheetsUrl(url);
+      res.textContent = '✅ Conexão OK! URL salva.';
+      setSyncStatus('ok', '<strong>Google Sheets conectado</strong>');
+      setFormSyncStatus('ok', 'Google Sheets conectado');
+      const card = document.getElementById('sheets-setup-card');
+      if (card) card.style.display = 'none';
+      setTimeout(() => { closeSetupModal(); syncNow(); }, 1000);
+    } else {
+      res.textContent = '❌ Erro: ' + (data.error || 'resposta inesperada');
+    }
+  } catch(e) {
+    res.textContent = '❌ Não conectou. Verifique se o deploy está como "Qualquer pessoa".';
+  }
+}
+
+// ── Enviar fila ao Sheets (push) ───────────────────────────
+async function syncNow() {
+  const url = getSheetsUrl();
+  if (!url) { openSetupModal(); return; }
+  const queue = getQueue();
+  if (queue.length === 0) {
+    setSyncStatus('ok', '<strong>Tudo sincronizado</strong> · sem pendências');
+    return;
+  }
+  setSyncStatus('spin', '<strong>Enviando</strong> ' + queue.length + ' sessão(ões)...');
+  try {
+    const data = await sheetsPOST(url, queue);
+    if (data.ok) {
+      removeFromQueue(queue.map(s => s.session_id));
+      setSyncStatus('ok',
+        '<strong>Sincronizado</strong> · ' + data.saved + ' salva(s)' +
+        (data.duplicates ? ' · ' + data.duplicates + ' já existia(m)' : ''));
+      showToast('✅ ' + data.saved + ' sessões no Sheets!');
+    } else {
+      setSyncStatus('err', '<strong>Erro ao enviar</strong> · ' + (data.error || ''));
+    }
+  } catch(e) {
+    setSyncStatus('warn', '<strong>Offline</strong> · ' + queue.length + ' na fila local');
+  }
+}
+
+// ── Buscar todos os dados do Sheets (pull) ────────────────
+async function pullFromSheets(silent) {
+  const url = getSheetsUrl();
+  if (!url) { if (!silent) openSetupModal(); return; }
+
+  setSyncStatus('spin', '<strong>Atualizando</strong> · buscando de todos os dispositivos...');
+  try {
+    const data = await sheetsGET(url);
+    if (data.ok) {
+      const remote    = data.sessions || [];
+      const remoteIds = new Set(remote.map(s => s.session_id));
+      // Pendentes locais que ainda não chegaram no Sheets
+      const pending   = getQueue().filter(s => !remoteIds.has(s.session_id));
+
+      // Sheets é a fonte de verdade — substitui tudo, mantém só os pendentes locais
+      sessions = [...remote, ...pending];
+      saveSessions();
+      localStorage.setItem(LS_LAST_SYNC, new Date().toISOString());
+
+      populateFilterSelects();
+      renderDash();
+      updateTabBadge();
+      updateSessionsList();
+
+      if (pending.length > 0) {
+        setSyncStatus('warn',
+          '<strong>' + remote.length + ' sessões</strong> · ' + pending.length + ' pendente(s) — enviando...');
+        syncNow(); // tenta esvaziar a fila imediatamente
+      } else {
+        const ts = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        setSyncStatus('ok',
+          '<strong>' + remote.length + ' sessões</strong> de todos os dispositivos · atualizado ' + ts);
+      }
+      if (!silent) showToast('✅ ' + remote.length + ' sessões carregadas!');
+    } else {
+      setSyncStatus('err', '<strong>Erro ao buscar</strong> · ' + (data.error || ''));
+    }
+  } catch(e) {
+    setSyncStatus('warn', '<strong>Offline</strong> · exibindo cache local');
+    if (!silent) showToast('⚠ Sem conexão. Exibindo dados locais.');
+  }
+}
+
+// — Init sync state on load —
+function initSync() {
+  const url  = getSheetsUrl();
+  const bar  = document.getElementById('sync-bar');
+  const card = document.getElementById('sheets-setup-card');
+  if (bar) bar.style.display = 'flex';
+  if (card) card.style.display = url ? 'none' : 'block';
+  if (url) {
+    const ls  = localStorage.getItem(LS_LAST_SYNC);
+    const lts = ls
+      ? 'última sync ' + new Date(ls).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+      : 'nunca sincronizado';
+    setSyncStatus('pending', '<strong>Google Sheets conectado</strong> · <span style="opacity:.6">(' + lts + ')</span>');
+    setFormSyncStatus('ok', 'Google Sheets conectado');
+  } else {
+    setSyncStatus('warn', '<strong>Google Sheets não configurado</strong> · dados ficam só neste dispositivo');
+    setFormSyncStatus('warn', 'Sheets não configurado — configure no Dashboard');
+  }
+  updateQueueBadge();
+}
+
+// ================================
+// DASH VIEWS
+// ================================
+function switchDashView(v) {
+  document.querySelectorAll('.d-view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.d-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('dview-' + v).classList.add('active');
+  document.getElementById('dnav-' + v).classList.add('active');
+  const titles = { overview:'Visão Geral', sessions:'Sessões', compare:'Comparar', verbatims:'Verbatims & Falas' };
+  document.getElementById('d-page-title').textContent = titles[v];
+}
+
+function renderDash() {
+  populateFilterSelects();
+  renderDSidebar();
+  renderOverview();
+  renderSessTable();
+  renderVerbatims();
+  renderCompare();
+}
+
+// ================================
+// DASH SIDEBAR
+// ================================
+function renderDSidebar() {
+  const container = document.getElementById('d-sidebar-sessions');
+  const noMsg = document.getElementById('d-no-sess');
+  const fs = filteredSessions();
+  document.getElementById('d-sess-total').textContent = sessions.length;
+  document.getElementById('d-count-badge').textContent = sessions.length;
+
+  if (!sessions.length) {
+    container.innerHTML = ''; container.appendChild(noMsg); noMsg.style.display = 'block'; return;
+  }
+  noMsg.style.display = 'none';
+  container.innerHTML = filteredSessions().map(s => {
+    const score = parseInt(s['exp-geral']) || 0;
+    const color = SCORE_COLORS[score] || '#7A7A8A';
+    const sel = selectedIds.has(s.session_id);
+    return `<button class="s-chip ${sel?'sel':''}" onclick="toggleSel('${s.session_id}')">
+      <span class="sc-dot" style="background:${color}"></span>
+      <span class="sc-info">
+        <span class="sc-id">${s.session_id}</span>
+        <span class="sc-meta">${s.data||''} · ${s.loja||'—'}</span>
+      </span>
+      ${score ? `<span class="sc-score" style="background:${color}22;color:${color}">${score}</span>` : ''}
+    </button>`;
+  }).join('');
+}
+
+function toggleSel(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderDSidebar(); renderCompare();
+}
+
+// ================================
+// OVERVIEW
+// ================================
+function renderOverview() {
+  const oc = document.getElementById('d-ov-content');
+  const oe = document.getElementById('d-ov-empty');
+  if (!sessions.length) { oc.style.display = 'none'; oe.style.display = 'flex'; return; }
+  oc.style.display = 'block'; oe.style.display = 'none';
+
+  const data = filteredSessions();
+  const n = data.length;
+  if (n === 0) {
+    document.getElementById('d-stats').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros aplicados.</div>';
+    document.getElementById('d-charts1').innerHTML = '';
+    document.getElementById('d-charts2').innerHTML = '';
+    document.getElementById('d-friction').innerHTML = '';
+    return;
+  }
+  const scores = data.map(s => parseInt(s['exp-geral'])).filter(Boolean);
+  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+  const probs = data.filter(s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno').length;
+  const att = data.filter(s => (s.resolucao||'').includes('atendente')||(s['obs-comp']||'').includes('chamou-atendente')).length;
+
+  document.getElementById('d-stats').innerHTML = `
+    <div class="stat-card ca"><div class="stat-label">Sessões</div><div class="stat-value">${n}</div><div class="stat-sub">${[...new Set(data.map(s=>s.loja).filter(Boolean))].length} loja(s)</div></div>
+    <div class="stat-card cy"><div class="stat-label">Nota Média</div><div class="stat-value" style="color:var(--d-accent2)">${avg}</div><div class="stat-sub">de 5 pontos</div></div>
+    <div class="stat-card ct"><div class="stat-label">Com Problemas</div><div class="stat-value" style="color:var(--d-accent)">${probs}</div><div class="stat-sub">${n>0?Math.round(probs/n*100):0}% das sessões</div></div>
+    <div class="stat-card cb"><div class="stat-label">Chamaram Atend.</div><div class="stat-value" style="color:var(--d-blue)">${att}</div><div class="stat-sub">${n>0?Math.round(att/n*100):0}% das sessões</div></div>
+  `;
+
+  // Score dist
+  const sd = [1,2,3,4,5].map(v => data.filter(s => parseInt(s['exp-geral'])===v).length);
+  document.getElementById('d-charts1').innerHTML = `
+    <div class="chart-card">
+      <div class="chart-title">Distribuição de Notas</div>
+      <div class="scale-dots">
+        ${[1,2,3,4,5].map((v,i) => `
+          <div class="s-dot-col">
+            <div class="s-dot" style="background:${sd[i]?SCORE_COLORS[v]+'22':'var(--d-surface2)'};color:${SCORE_COLORS[v]};height:${40+sd[i]*8}px">${v}</div>
+            <div class="s-dot-label">Nota ${v}</div><div class="s-dot-count">${sd[i]}×</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    ${buildBarChart('Frequência de Uso',
+      ['primeira-vez','raramente','as-vezes','sempre'],
+      ['Primeira vez','Raramente','Às vezes','Sempre'],
+      ['#AFF6FF','#FFB547','#4A8FFF','#2EDAAC'],
+      s => s.freq
+    )}
+  `;
+
+  document.getElementById('d-charts2').innerHTML =
+    buildBarChart('Severidade dos Problemas',
+      ['nao','pequeno','bastante'], ['Sem problema','Pequeno','Bastante'],
+      ['#2EDAAC','#FFB547','#AFF6FF'], s => s['teve-prob']
+    ) +
+    buildBarChart('Intenção de Reuso',
+      ['sim-sempre','depende-fila','talvez','prefiro-caixa'],
+      ['Sim, sempre','Depende da fila','Talvez','Prefiro caixa'],
+      ['#2EDAAC','#4A8FFF','#FFB547','#AFF6FF'], s => s.reuso
+    );
+
+  // Friction
+  const eKeys = Object.keys(ETAPAS).filter(k => k !== 'nenhuma');
+  const eData = eKeys.map(k => data.filter(s => (s.etapa||'').split('|').includes(k)).length);
+  const maxE = Math.max(...eData, 1);
+  document.getElementById('d-friction').innerHTML = `
+    <div class="chart-card">
+      <div class="chart-title">🔥 Mapa de Fricções — Etapas Problemáticas</div>
+      <div class="friction-grid">
+        ${eKeys.map((k,i) => `
+          <div class="friction-item">
+            <div class="friction-bar-bg" style="height:${Math.round(eData[i]/maxE*80)}%"></div>
+            <div class="friction-name">${ETAPAS[k]}</div>
+            <div class="friction-count">${eData[i]}</div>
+            <div class="friction-pct">${Math.round(eData[i]/n*100)}% das sessões</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function buildBarChart(title, keys, labels, colors, getter) {
+  const src = filteredSessions();
+  const data = keys.map(k => src.filter(s => getter(s) === k).length);
+  const maxV = Math.max(...data, 1);
+  return `<div class="chart-card">
+    <div class="chart-title">${title}</div>
+    ${keys.map((k,i) => `
+      <div class="bar-row">
+        <span class="bar-label">${labels[i]}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${data[i]/maxV*100}%;background:${colors[i]}">
+            ${data[i]>0?`<span class="bar-val">${data[i]}</span>`:''}
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ================================
+// SESSIONS TABLE
+// ================================
+function renderSessTable() {
+  const empty = document.getElementById('d-sess-empty');
+  const wrap = document.getElementById('d-table-wrap');
+  if (!sessions.length) { empty.style.display='flex'; wrap.style.display='none'; return; }
+  const data = filteredSessions();
+  if (!data.length) {
+    empty.style.display='none'; wrap.style.display='block';
+    document.getElementById('d-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</td></tr>';
+    return;
+  }
+  empty.style.display = 'none'; wrap.style.display = 'block';
+
+  document.getElementById('d-tbody').innerHTML = data.map((s, i) => {
+    const score = parseInt(s['exp-geral']) || 0;
+    const etapas = (s.etapa||'').split('|').filter(Boolean).map(k => ETAPAS[k]||k);
+    const pCls = {'nao':'pnao','pequeno':'ppeq','bastante':'pbas'}[s['teve-prob']] || '';
+    return `<tr onclick="toggleRow(${i})">
+      <td style="color:var(--d-ink-soft);font-size:11px;padding-left:12px">▶</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px">${s.session_id}</span>${s.pesquisador?`<br><span style="font-size:10px;color:var(--d-ink-soft)">${s.pesquisador}</span>`:''}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--d-ink-soft)">${s.data||'—'}<br>${s.horario||''}</td>
+      <td style="font-size:11.5px">${s.loja||'—'}</td>
+      <td><span class="chip-sm">${lbl('obs-age',s['obs-age'])}</span></td>
+      <td><span class="chip-sm">${lbl('obs-itens',s['obs-itens'])}</span></td>
+      <td style="font-size:11.5px">${lbl('freq',s.freq)}</td>
+      <td><span class="score-pill s${score}">${score||'—'}</span></td>
+      <td><span class="prob-dot ${pCls}"></span>${lbl('teve-prob',s['teve-prob'])}</td>
+      <td>${etapas.slice(0,2).map(e=>`<span class="chip-sm" style="margin:1px">${e}</span>`).join('')}${etapas.length>2?`<span style="font-size:10px;color:var(--d-ink-soft)"> +${etapas.length-2}</span>`:''}</td>
+      <td style="font-size:11.5px">${lbl('reuso',s.reuso)}</td>
+      <td><button class="del-btn" onclick="event.stopPropagation();delSession('${s.session_id}')">✕</button></td>
+    </tr>
+    <tr class="row-expand" id="drow-${i}">
+      <td colspan="12">
+        <div class="expand-inner">
+          <div class="expand-grid">
+            <div><div class="expand-label">Verbatim — dificuldade</div><div class="expand-val q">${s.verbatim||'(vazio)'}</div></div>
+            <div><div class="expand-label">Uma mudança</div><div class="expand-val q">${s['uma-mudanca']||'(vazio)'}</div></div>
+            <div><div class="expand-label">Nota de campo</div><div class="expand-val">${s['obs-nota']||'—'}</div></div>
+            <div><div class="expand-label">Momento de confusão</div><div class="expand-val">${s['momento-perdido']||'—'}</div></div>
+            <div style="grid-column:1/-1"><div class="expand-label">Notas do pesquisador</div><div class="expand-val">${s['notas-pesq']||'—'}</div></div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleRow(i) { document.getElementById('drow-'+i).classList.toggle('open'); }
+
+function delSession(id) {
+  sessions = sessions.filter(s => s.session_id !== id);
+  selectedIds.delete(id);
+  saveSessions(); updateTabBadge(); renderDash();
+  showToast('Sessão removida.');
+}
+
+// ================================
+// VERBATIMS
+// ================================
+function renderVerbatims() {
+  const empty = document.getElementById('d-verb-empty');
+  const list = document.getElementById('d-verbatims-list');
+  const cards = [];
+  filteredSessions().forEach(s => {
+    if (s.verbatim?.trim().length > 3)
+      cards.push({ text:s.verbatim, sid:s.session_id, loja:s.loja, score:s['exp-geral'], tag:'vf', lbl:'Dificuldade' });
+    if (s['uma-mudanca']?.trim().length > 3)
+      cards.push({ text:s['uma-mudanca'], sid:s.session_id, loja:s.loja, score:s['exp-geral'], tag:'vc', lbl:'Mudaria' });
+  });
+  if (!cards.length) { empty.style.display='flex'; list.innerHTML=''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = cards.map(c => `
+    <div class="vcard">
+      <div class="vquote">${c.text}</div>
+      <div class="vmeta">
+        <span class="vtag">${c.sid}</span>
+        ${c.loja?`<span class="vtag">${c.loja}</span>`:''}
+        ${c.score?`<span class="vtag">Nota ${c.score}/5</span>`:''}
+        <span class="vtag ${c.tag}">${c.lbl}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ================================
+// COMPARE
+// ================================
+function renderCompare() {
+  const empty = document.getElementById('d-cmp-empty');
+  const content = document.getElementById('d-compare-content');
+  const sel = filteredSessions().filter(s => selectedIds.has(s.session_id));
+  if (sel.length < 2) { empty.style.display='flex'; content.innerHTML=''; return; }
+  empty.style.display = 'none';
+
+  const fields = [
+    { label:'Data / Hora', r: s => `${s.data||'—'} ${s.horario||''}` },
+    { label:'Loja', r: s => s.loja||'—' },
+    { label:'Perfil Etário', r: s => lbl('obs-age',s['obs-age']) },
+    { label:'Volume de Itens', r: s => lbl('obs-itens',s['obs-itens']) },
+    { label:'Frequência de Uso', r: s => lbl('freq',s.freq) },
+    { label:'Nota Geral', r: s => { const sc=parseInt(s['exp-geral'])||0; return sc?`<span class="score-pill s${sc}" style="width:auto;padding:4px 10px">${sc} / 5</span>`:'—'; }},
+    { label:'Motivo da Escolha', r: s => lbl('motivo',s.motivo) },
+    { label:'Teve Problema?', r: s => lbl('teve-prob',s['teve-prob']) },
+    { label:'Etapas Difíceis', r: s => { const et=(s.etapa||'').split('|').filter(Boolean); return et.map(k=>`<span class="chip-sm" style="margin:2px">${ETAPAS[k]||k}</span>`).join('')||'—'; }},
+    { label:'Fala — Dificuldade', r: s => s.verbatim?`<span class="cc-val q">${s.verbatim}</span>`:'—' },
+    { label:'Como Resolveu', r: s => lbl('resolucao',s.resolucao) },
+    { label:'Clareza da Interface', r: s => lbl('clareza',s.clareza) },
+    { label:'Momento de Confusão', r: s => s['momento-perdido']||'—' },
+    { label:'Mudaria Uma Coisa', r: s => s['uma-mudanca']?`<span class="cc-val q">${s['uma-mudanca']}</span>`:'—' },
+    { label:'Usaria Novamente?', r: s => lbl('reuso',s.reuso) },
+    { label:'Nota de Campo', r: s => s['obs-nota']||'—' },
+  ];
+
+  content.innerHTML = `
+    <div style="font-size:12px;color:var(--d-ink-soft);margin-bottom:14px">
+      Comparando <strong style="color:var(--d-ink)">${sel.length}</strong> sessões. Selecione mais na sidebar.
+    </div>
+    ${fields.map(f => `
+      <div class="compare-row">
+        <div class="compare-row-head">${f.label}</div>
+        <div class="compare-cells">
+          ${sel.map(s => `<div class="compare-cell"><div class="cc-session">${s.session_id} · ${s.loja||'—'}</div><div class="cc-val">${f.r(s)}</div></div>`).join('')}
+        </div>
+      </div>`).join('')}`;
+}
+
+// ================================
+// TOAST
+// ================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ================================
+// INIT
+// ================================
+loadSessions();          // carrega cache local imediatamente
+updateSessionsList();
+updateTabBadge();
+updateProgress();
+populateFilterSelects();
+initSync();
+
+// Ao carregar a página, busca dados atualizados do Sheets em background
+// para que o dashboard já tenha dados de todos os dispositivos
+if (getSheetsUrl()) {
+  setTimeout(() => pullFromSheets(true), 800); // delay para não bloquear o render inicial
+}
+</script>
+</body>
+</html>

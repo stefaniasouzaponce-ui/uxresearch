@@ -1083,7 +1083,7 @@ textarea:focus { border-color: var(--accent); }
         <span class="sync-text" id="sync-text">Não configurado</span>
         <span class="queue-badge" id="queue-badge">0 na fila</span>
         <button class="sync-btn" onclick="syncNow()" id="sync-now-btn">↑ Sincronizar agora</button>
-        <button class="sync-btn" onclick="pullFromSheets()" id="pull-btn">↓ Buscar dados</button>
+        <button class="sync-btn" onclick="pullFromSheets(false)" id="pull-btn">↓ Atualizar de todos os dispositivos</button>
         <button class="sync-btn" onclick="openSetupModal()">⚙ Reconfigurar</button>
       </div>
       </div>
@@ -1233,14 +1233,10 @@ function goToDash() {
   document.getElementById('screen-form').classList.remove('active');
   document.getElementById('tab-dash').classList.add('active');
   document.getElementById('tab-form').classList.remove('active');
+  // Renderiza com cache local imediatamente (sem piscar)
   renderDash();
-  // Auto-pull na primeira abertura do dashboard
-  if (_dashFirstOpen && getSheetsUrl()) {
-    _dashFirstOpen = false;
-    pullFromSheets();
-  } else {
-    _dashFirstOpen = false;
-  }
+  // Sempre busca a versão mais recente do Sheets ao abrir o dashboard
+  if (getSheetsUrl()) pullFromSheets(true);
 }
 
 // ================================
@@ -1516,34 +1512,50 @@ async function syncNow() {
 }
 
 // — Pull all sessions from Sheets —
-async function pullFromSheets() {
+async function pullFromSheets(silent) {
   const url = getSheetsUrl();
   if (!url) { openSetupModal(); return; }
 
-  setSyncStatus('spin', '<strong>Buscando dados</strong> do Google Sheets...');
+  setSyncStatus('spin', '<strong>Carregando dados</strong> de todos os dispositivos...');
   try {
     const r = await fetch(url + '?action=get', { mode: 'cors' });
     const data = await r.json();
     if (data.ok) {
       const remote = data.sessions || [];
-      // Merge: remote wins for duplicates, keep local additions
-      const localIds = new Set(sessions.map(s => s.session_id));
+
+      // Sheets é a fonte de verdade.
+      // Mantemos só as sessões da fila local que ainda não chegaram no Sheets.
       const remoteIds = new Set(remote.map(s => s.session_id));
-      // Sessions in local but not remote → still pending or deleted remotely
-      const localOnly = sessions.filter(s => !remoteIds.has(s.session_id));
-      sessions = [...remote, ...localOnly];
+      const queue     = getQueue();
+      const pending   = queue.filter(s => !remoteIds.has(s.session_id));
+
+      // Sessão final = tudo do Sheets + pendentes ainda não enviados
+      sessions = [...remote, ...pending];
       saveSessions();
       populateFilterSelects();
       renderDash();
-      setSyncStatus('ok', `<strong>Atualizado</strong> · ${remote.length} sessões do Sheets · ${localOnly.length} só local`);
       updateTabBadge();
       updateSessionsList();
-      showToast('✅ ' + remote.length + ' sessões carregadas do Sheets!');
+
+      const pendingCount = pending.length;
+      if (pendingCount > 0) {
+        setSyncStatus('warn',
+          `<strong>${remote.length} sessões carregadas</strong> · ${pendingCount} pendente(s) na fila local`);
+        // Tenta enviar os pendentes imediatamente
+        syncNow();
+      } else {
+        setSyncStatus('ok',
+          `<strong>${remote.length} sessões</strong> · todos os dispositivos sincronizados`);
+      }
+
+      localStorage.setItem('ux_sc_last_sync', new Date().toISOString());
+      if (!silent) showToast('✅ ' + remote.length + ' sessões carregadas de todos os dispositivos!');
     } else {
-      setSyncStatus('err', '<strong>Erro ao buscar</strong> · ' + (data.error || ''));
+      setSyncStatus('err', '<strong>Erro ao buscar dados</strong> · ' + (data.error || ''));
     }
   } catch(e) {
-    setSyncStatus('warn', '<strong>Sem conexão</strong> · usando dados locais');
+    setSyncStatus('warn', '<strong>Offline</strong> · exibindo dados locais do cache');
+    if (!silent) showToast('⚠ Sem conexão. Exibindo cache local.');
   }
 }
 
@@ -1554,13 +1566,19 @@ function initSync() {
   if (!bar) return;
   bar.style.display = 'flex';
   if (url) {
-    setSyncStatus('pending', '<strong>Google Sheets configurado</strong> · clique em Sincronizar');
+    const lastSync = localStorage.getItem('ux_sc_last_sync');
+    const lastSyncText = lastSync
+      ? 'última sync ' + new Date(lastSync).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+      : 'nunca sincronizado';
+    setSyncStatus('pending', `<strong>Google Sheets conectado</strong> · buscando dados… <span style="opacity:.6">(${lastSyncText})</span>`);
     setFormSyncStatus('ok', 'Google Sheets conectado');
   } else {
-    setSyncStatus('warn', '<strong>Google Sheets não configurado</strong>');
+    setSyncStatus('warn', '<strong>Google Sheets não configurado</strong> · dados ficam só neste dispositivo');
     setFormSyncStatus('warn', 'Sheets não configurado — configure no Dashboard');
   }
   updateQueueBadge();
+  const card = document.getElementById('sheets-setup-card');
+  if (card) card.style.display = url ? 'none' : 'block';
 }
 
 // ================================
@@ -1856,15 +1874,19 @@ function showToast(msg) {
 // ================================
 // INIT
 // ================================
-loadSessions();
+loadSessions();          // carrega cache local imediatamente
 updateSessionsList();
 updateTabBadge();
 updateProgress();
 populateFilterSelects();
 initSync();
 
-// Auto-pull from Sheets on first open of dashboard
-let _dashFirstOpen = true;
+// Ao carregar a página, busca dados atualizados do Sheets em background
+// para que o dashboard já tenha dados de todos os dispositivos
+if (getSheetsUrl()) {
+  setTimeout(() => pullFromSheets(true), 800); // delay para não bloquear o render inicial
+}
 </script>
 </body>
 </html>
+

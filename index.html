@@ -1308,19 +1308,13 @@ function saveSession() {
   const data = collectData();
   sessions.push(data);
   saveSessions();
-  addToQueue(data);          // adiciona à fila de sync
+  addToQueue(data);
   updateSessionsList();
   updateTabBadge();
-  resetForm();
-
-  // Tenta sincronizar imediatamente se tiver URL configurada
-  const url = getSheetsUrl();
-  if (url) {
-    showToast('💾 Sessão salva! Enviando ao Sheets...');
-    syncNow();
-  } else {
-    showToast('💾 Sessão salva localmente. Configure o Sheets para sincronizar.');
-  }
+  resetForm();              // ← reseta o formulário imediatamente, sem esperar sync
+  showToast('💾 Sessão salva! Pronto para a próxima.');
+  // Sync em background — não bloqueia o formulário
+  if (getSheetsUrl()) syncNow();
 }
 
 function updateSessionsList() {
@@ -1367,22 +1361,20 @@ function downloadAllCSV() {
 // STORAGE + GOOGLE SHEETS SYNC
 // ================================
 
-const LS_SESSIONS = 'ux_sc_sessions';
-const LS_URL      = 'ux_sc_sheets_url';
-const LS_QUEUE    = 'ux_sc_sync_queue'; // sessions pending upload
+const LS_SESSIONS  = 'ux_sc_sessions';
+const LS_URL       = 'ux_sc_sheets_url';
+const LS_QUEUE     = 'ux_sc_sync_queue';
+const LS_LAST_SYNC = 'ux_sc_last_sync';
 
+// ── Local storage ──────────────────────────────────────────
 function saveSessions() {
   try { localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions)); } catch(e) {}
 }
-
 function loadSessions() {
-  try {
-    const d = localStorage.getItem(LS_SESSIONS);
-    if (d) sessions = JSON.parse(d);
-  } catch(e) {}
+  try { const d = localStorage.getItem(LS_SESSIONS); if (d) sessions = JSON.parse(d); } catch(e) {}
 }
 
-// — Queue helpers —
+// ── Queue (sessões aguardando envio) ───────────────────────
 function getQueue() {
   try { return JSON.parse(localStorage.getItem(LS_QUEUE) || '[]'); } catch(e) { return []; }
 }
@@ -1391,46 +1383,35 @@ function saveQueue(q) {
 }
 function addToQueue(session) {
   const q = getQueue();
-  if (!q.find(s => s.session_id === session.session_id)) q.push(session);
-  saveQueue(q);
+  if (!q.find(s => s.session_id === session.session_id)) { q.push(session); saveQueue(q); }
   updateQueueBadge();
-  // Show/hide the form-level sheets setup card
-  const card = document.getElementById('sheets-setup-card');
-  if (card) card.style.display = url ? 'none' : 'block';
 }
 function removeFromQueue(ids) {
-  const q = getQueue().filter(s => !ids.includes(s.session_id));
-  saveQueue(q);
+  saveQueue(getQueue().filter(s => !ids.includes(s.session_id)));
   updateQueueBadge();
 }
 function updateQueueBadge() {
   const q = getQueue();
   const badge = document.getElementById('queue-badge');
   if (!badge) return;
-  if (q.length > 0) { badge.style.display = 'inline'; badge.textContent = q.length + ' na fila'; }
-  else              { badge.style.display = 'none'; }
+  badge.style.display = q.length > 0 ? 'inline' : 'none';
+  badge.textContent = q.length + ' na fila';
 }
 
-// — URL helpers —
-function getSheetsUrl() {
-  return localStorage.getItem(LS_URL) || '';
-}
-function setSheetsUrl(url) {
-  localStorage.setItem(LS_URL, url);
-}
+// ── Sheets URL ─────────────────────────────────────────────
+function getSheetsUrl() { return localStorage.getItem(LS_URL) || ''; }
+function setSheetsUrl(url) { localStorage.setItem(LS_URL, url); }
 
-// — Status UI —
+// ── Status UI ──────────────────────────────────────────────
 function setSyncStatus(state, text) {
-  // state: 'ok' | 'warn' | 'err' | 'pending' | 'spin'
-  const dot  = document.getElementById('sync-dot');
-  const txt  = document.getElementById('sync-text');
-  const bar  = document.getElementById('sync-bar');
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  const bar = document.getElementById('sync-bar');
   if (!dot) return;
   bar.style.display = 'flex';
   dot.className = 'sync-dot ' + state;
   txt.innerHTML = text;
 }
-
 function setFormSyncStatus(state, text) {
   const dot = document.getElementById('form-sync-dot');
   const lbl = document.getElementById('form-sync-label');
@@ -1439,10 +1420,9 @@ function setFormSyncStatus(state, text) {
   if (lbl) lbl.textContent = text;
 }
 
-// — Setup modal —
+// ── Setup modal ────────────────────────────────────────────
 function openSetupModal() {
-  const url = getSheetsUrl();
-  document.getElementById('sheets-url-input').value = url;
+  document.getElementById('sheets-url-input').value = getSheetsUrl();
   document.getElementById('modal-test-result').textContent = '';
   document.getElementById('setup-modal').style.display = 'flex';
 }
@@ -1450,135 +1430,145 @@ function closeSetupModal() {
   document.getElementById('setup-modal').style.display = 'none';
 }
 
+// ── CORS-safe fetch para Apps Script ──────────────────────
+// O Apps Script exige que POST use text/plain (não application/json)
+// para não disparar preflight CORS. O JSON vai como string no body.
+async function sheetsGET(url) {
+  const r = await fetch(url + '?action=get', { method: 'GET' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function sheetsPOST(url, payload) {
+  // Enviamos como text/plain para evitar o preflight CORS do Apps Script
+  const r = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+    // SEM headers: { 'Content-Type': 'application/json' }  ← esse é o problema do CORS
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── Ping / teste de conexão ────────────────────────────────
+async function pingSheets(url) {
+  const r = await fetch(url + '?action=ping', { method: 'GET' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── Salvar e testar URL ────────────────────────────────────
 async function saveAndTestUrl() {
   const url = document.getElementById('sheets-url-input').value.trim();
   const res = document.getElementById('modal-test-result');
   if (!url) { res.textContent = '⚠ Cole a URL antes de salvar.'; return; }
   res.textContent = '⏳ Testando conexão...';
   try {
-    const r = await fetch(url + '?action=ping', { mode: 'cors' });
-    const data = await r.json();
+    const data = await pingSheets(url);
     if (data.ok) {
       setSheetsUrl(url);
       res.textContent = '✅ Conexão OK! URL salva.';
-      setSyncStatus('ok', '<strong>Google Sheets conectado</strong> · Sincronização ativa');
+      setSyncStatus('ok', '<strong>Google Sheets conectado</strong>');
       setFormSyncStatus('ok', 'Google Sheets conectado');
-      setTimeout(() => {
-        closeSetupModal();
-        syncNow();
-      }, 1200);
+      const card = document.getElementById('sheets-setup-card');
+      if (card) card.style.display = 'none';
+      setTimeout(() => { closeSetupModal(); syncNow(); }, 1000);
     } else {
-      res.textContent = '❌ API respondeu com erro: ' + (data.error || 'desconhecido');
+      res.textContent = '❌ Erro: ' + (data.error || 'resposta inesperada');
     }
   } catch(e) {
-    res.textContent = '❌ Não foi possível conectar. Verifique a URL e as permissões.';
+    res.textContent = '❌ Não conectou. Verifique se o deploy está como "Qualquer pessoa".';
   }
 }
 
-// — Push sessions to Sheets —
+// ── Enviar fila ao Sheets (push) ───────────────────────────
 async function syncNow() {
   const url = getSheetsUrl();
   if (!url) { openSetupModal(); return; }
-
   const queue = getQueue();
   if (queue.length === 0) {
-    setSyncStatus('ok', '<strong>Tudo sincronizado</strong> · Sem pendências');
+    setSyncStatus('ok', '<strong>Tudo sincronizado</strong> · sem pendências');
     return;
   }
-
-  setSyncStatus('spin', '<strong>Sincronizando</strong> · ' + queue.length + ' sessões...');
-
+  setSyncStatus('spin', '<strong>Enviando</strong> ' + queue.length + ' sessão(ões)...');
   try {
-    const r = await fetch(url, {
-      method: 'POST',
-      mode: 'cors',
-      body: JSON.stringify(queue),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await r.json();
+    const data = await sheetsPOST(url, queue);
     if (data.ok) {
-      const synced = queue.map(s => s.session_id);
-      removeFromQueue(synced);
-      const total = data.saved + (data.duplicates || 0);
-      setSyncStatus('ok', `<strong>Sincronizado</strong> · ${data.saved} salva(s) · ${data.duplicates||0} já existia(m)`);
-      showToast('✅ ' + data.saved + ' sessões enviadas ao Sheets!');
+      removeFromQueue(queue.map(s => s.session_id));
+      setSyncStatus('ok',
+        '<strong>Sincronizado</strong> · ' + data.saved + ' salva(s)' +
+        (data.duplicates ? ' · ' + data.duplicates + ' já existia(m)' : ''));
+      showToast('✅ ' + data.saved + ' sessões no Sheets!');
     } else {
-      setSyncStatus('err', '<strong>Erro ao sincronizar</strong> · ' + (data.error || 'tente novamente'));
+      setSyncStatus('err', '<strong>Erro ao enviar</strong> · ' + (data.error || ''));
     }
   } catch(e) {
-    setSyncStatus('warn', '<strong>Sem conexão</strong> · ' + queue.length + ' sessões na fila local');
-    showToast('⚠ Offline. Sessões salvas localmente, serão sincronizadas depois.');
+    setSyncStatus('warn', '<strong>Offline</strong> · ' + queue.length + ' na fila local');
   }
 }
 
-// — Pull all sessions from Sheets —
+// ── Buscar todos os dados do Sheets (pull) ────────────────
 async function pullFromSheets(silent) {
   const url = getSheetsUrl();
-  if (!url) { openSetupModal(); return; }
+  if (!url) { if (!silent) openSetupModal(); return; }
 
-  setSyncStatus('spin', '<strong>Carregando dados</strong> de todos os dispositivos...');
+  setSyncStatus('spin', '<strong>Atualizando</strong> · buscando de todos os dispositivos...');
   try {
-    const r = await fetch(url + '?action=get', { mode: 'cors' });
-    const data = await r.json();
+    const data = await sheetsGET(url);
     if (data.ok) {
-      const remote = data.sessions || [];
-
-      // Sheets é a fonte de verdade.
-      // Mantemos só as sessões da fila local que ainda não chegaram no Sheets.
+      const remote    = data.sessions || [];
       const remoteIds = new Set(remote.map(s => s.session_id));
-      const queue     = getQueue();
-      const pending   = queue.filter(s => !remoteIds.has(s.session_id));
+      // Pendentes locais que ainda não chegaram no Sheets
+      const pending   = getQueue().filter(s => !remoteIds.has(s.session_id));
 
-      // Sessão final = tudo do Sheets + pendentes ainda não enviados
+      // Sheets é a fonte de verdade — substitui tudo, mantém só os pendentes locais
       sessions = [...remote, ...pending];
       saveSessions();
+      localStorage.setItem(LS_LAST_SYNC, new Date().toISOString());
+
       populateFilterSelects();
       renderDash();
       updateTabBadge();
       updateSessionsList();
 
-      const pendingCount = pending.length;
-      if (pendingCount > 0) {
+      if (pending.length > 0) {
         setSyncStatus('warn',
-          `<strong>${remote.length} sessões carregadas</strong> · ${pendingCount} pendente(s) na fila local`);
-        // Tenta enviar os pendentes imediatamente
-        syncNow();
+          '<strong>' + remote.length + ' sessões</strong> · ' + pending.length + ' pendente(s) — enviando...');
+        syncNow(); // tenta esvaziar a fila imediatamente
       } else {
+        const ts = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
         setSyncStatus('ok',
-          `<strong>${remote.length} sessões</strong> · todos os dispositivos sincronizados`);
+          '<strong>' + remote.length + ' sessões</strong> de todos os dispositivos · atualizado ' + ts);
       }
-
-      localStorage.setItem('ux_sc_last_sync', new Date().toISOString());
-      if (!silent) showToast('✅ ' + remote.length + ' sessões carregadas de todos os dispositivos!');
+      if (!silent) showToast('✅ ' + remote.length + ' sessões carregadas!');
     } else {
-      setSyncStatus('err', '<strong>Erro ao buscar dados</strong> · ' + (data.error || ''));
+      setSyncStatus('err', '<strong>Erro ao buscar</strong> · ' + (data.error || ''));
     }
   } catch(e) {
-    setSyncStatus('warn', '<strong>Offline</strong> · exibindo dados locais do cache');
-    if (!silent) showToast('⚠ Sem conexão. Exibindo cache local.');
+    setSyncStatus('warn', '<strong>Offline</strong> · exibindo cache local');
+    if (!silent) showToast('⚠ Sem conexão. Exibindo dados locais.');
   }
 }
 
 // — Init sync state on load —
 function initSync() {
-  const url = getSheetsUrl();
-  const bar = document.getElementById('sync-bar');
-  if (!bar) return;
-  bar.style.display = 'flex';
+  const url  = getSheetsUrl();
+  const bar  = document.getElementById('sync-bar');
+  const card = document.getElementById('sheets-setup-card');
+  if (bar) bar.style.display = 'flex';
+  if (card) card.style.display = url ? 'none' : 'block';
   if (url) {
-    const lastSync = localStorage.getItem('ux_sc_last_sync');
-    const lastSyncText = lastSync
-      ? 'última sync ' + new Date(lastSync).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    const ls  = localStorage.getItem(LS_LAST_SYNC);
+    const lts = ls
+      ? 'última sync ' + new Date(ls).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
       : 'nunca sincronizado';
-    setSyncStatus('pending', `<strong>Google Sheets conectado</strong> · buscando dados… <span style="opacity:.6">(${lastSyncText})</span>`);
+    setSyncStatus('pending', '<strong>Google Sheets conectado</strong> · <span style="opacity:.6">(' + lts + ')</span>');
     setFormSyncStatus('ok', 'Google Sheets conectado');
   } else {
     setSyncStatus('warn', '<strong>Google Sheets não configurado</strong> · dados ficam só neste dispositivo');
     setFormSyncStatus('warn', 'Sheets não configurado — configure no Dashboard');
   }
   updateQueueBadge();
-  const card = document.getElementById('sheets-setup-card');
-  if (card) card.style.display = url ? 'none' : 'block';
 }
 
 // ================================

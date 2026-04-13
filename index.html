@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Pesquisa · Self-Checkout</title>
+<title>UX Research · Self-Checkout</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap');
 
@@ -668,42 +668,7 @@ textarea:focus { border-color: var(--accent); }
   display: none;
 }
 
-/* Setup modal */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 500;
-  background: rgba(2,30,42,.85);
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
-}
-.modal-box {
-  background: var(--d-surface);
-  border: 1px solid var(--d-border);
-  border-radius: 14px;
-  padding: 28px 24px;
-  max-width: 440px; width: 100%;
-  display: flex; flex-direction: column; gap: 14px;
-}
-.modal-title {
-  font-family: 'Nunito', sans-serif;
-  font-size: 17px; font-weight: 800;
-  color: var(--d-ink);
-}
-.modal-sub { font-size: 12.5px; color: var(--d-ink-soft); line-height: 1.6; }
-.modal-sub a { color: var(--d-accent); }
-.modal-input {
-  width: 100%;
-  background: var(--d-surface2);
-  border: 1.5px solid var(--d-border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-family: 'DM Mono', monospace;
-  font-size: 11.5px;
-  color: var(--d-ink);
-  outline: none;
-}
-.modal-input:focus { border-color: var(--d-accent); }
-.modal-input::placeholder { color: var(--d-ink-soft); }
-.modal-row { display: flex; gap: 8px; }
+
 
 /* Form sync indicator */
 .form-sync-row {
@@ -958,17 +923,7 @@ textarea:focus { border-color: var(--accent); }
       </div>
     </div>
 
-    <!-- Sheets config shortcut (visible when not configured) -->
-    <div class="bot-card" id="sheets-setup-card" style="border:1.5px dashed var(--border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:20px">🔗</span>
-        <div style="flex:1">
-          <div class="bot-title" style="font-size:12.5px">Google Sheets não configurado</div>
-          <div class="q-tip">Dados salvos só neste dispositivo. Configure para salvar na nuvem.</div>
-        </div>
-        <button class="btn btn-dark" style="width:auto;padding:8px 14px;font-size:12px" onclick="goToDash();setTimeout(openSetupModal,400)">Configurar</button>
-      </div>
-    </div>
+
 
   </div>
 </div>
@@ -1084,7 +1039,7 @@ textarea:focus { border-color: var(--accent); }
         <span class="queue-badge" id="queue-badge">0 na fila</span>
         <button class="sync-btn" onclick="syncNow()" id="sync-now-btn">↑ Sincronizar agora</button>
         <button class="sync-btn" onclick="pullFromSheets(false)" id="pull-btn">↓ Atualizar de todos os dispositivos</button>
-        <button class="sync-btn" onclick="openSetupModal()">⚙ Reconfigurar</button>
+        
       </div>
       </div>
     </main>
@@ -1105,29 +1060,6 @@ textarea:focus { border-color: var(--accent); }
   </button>
 </nav>
 
-
-<!-- SETUP MODAL -->
-<div class="modal-overlay" id="setup-modal" style="display:none">
-  <div class="modal-box">
-    <div class="modal-title">🔗 Conectar ao Google Sheets</div>
-    <div class="modal-sub">
-      Cole aqui a URL do seu <strong>Web App</strong> gerado no Google Apps Script.<br><br>
-      Passo a passo:<br>
-      1. Abra <a href="https://script.google.com" target="_blank">script.google.com</a><br>
-      2. Crie um projeto e cole o código <strong>Code.gs</strong><br>
-      3. Clique em <strong>Implantar → Nova implantação → App da Web</strong><br>
-      4. Executar como: <em>Eu mesmo</em> · Acesso: <em>Qualquer pessoa</em><br>
-      5. Copie a URL gerada e cole abaixo
-    </div>
-    <input class="modal-input" id="sheets-url-input" type="url"
-      placeholder="https://script.google.com/macros/s/.../exec">
-    <div class="modal-row">
-      <button class="sync-btn" onclick="closeSetupModal()" style="flex:1">Cancelar</button>
-      <button class="sync-btn primary" onclick="saveAndTestUrl()" style="flex:2">💾 Salvar e testar conexão</button>
-    </div>
-    <div id="modal-test-result" style="font-size:11.5px;color:var(--d-ink-soft);font-family:'DM Mono',monospace;min-height:18px"></div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1362,7 +1294,6 @@ function downloadAllCSV() {
 // ================================
 
 const LS_SESSIONS  = 'ux_sc_sessions';
-const LS_URL       = 'ux_sc_sheets_url';
 const LS_QUEUE     = 'ux_sc_sync_queue';
 const LS_LAST_SYNC = 'ux_sc_last_sync';
 
@@ -1398,9 +1329,10 @@ function updateQueueBadge() {
   badge.textContent = q.length + ' na fila';
 }
 
-// ── Sheets URL ─────────────────────────────────────────────
-function getSheetsUrl() { return localStorage.getItem(LS_URL) || ''; }
-function setSheetsUrl(url) { localStorage.setItem(LS_URL, url); }
+// ── Sheets URL — fixada no código, igual para todos os dispositivos ──
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwyJrR9p6dg2tWDmVRi9VTpulPRKKqwH3BWhq9JY161OtyJR1ejHDzFvYkakR3YuRqp/exec';
+function getSheetsUrl() { return SHEETS_URL; }
+function setSheetsUrl(url) { /* URL fixa, não sobrescreve */ }
 
 // ── Status UI ──────────────────────────────────────────────
 function setSyncStatus(state, text) {
@@ -1418,16 +1350,6 @@ function setFormSyncStatus(state, text) {
   if (!dot) return;
   dot.className = 'form-sync-dot ' + state;
   if (lbl) lbl.textContent = text;
-}
-
-// ── Setup modal ────────────────────────────────────────────
-function openSetupModal() {
-  document.getElementById('sheets-url-input').value = getSheetsUrl();
-  document.getElementById('modal-test-result').textContent = '';
-  document.getElementById('setup-modal').style.display = 'flex';
-}
-function closeSetupModal() {
-  document.getElementById('setup-modal').style.display = 'none';
 }
 
 // ── CORS-safe fetch para Apps Script ──────────────────────
@@ -1457,29 +1379,19 @@ async function pingSheets(url) {
   return r.json();
 }
 
-// ── Salvar e testar URL ────────────────────────────────────
+// ── Teste de conexão (debug interno) ──────────────────────
 async function saveAndTestUrl() {
-  const url = document.getElementById('sheets-url-input').value.trim();
-  const res = document.getElementById('modal-test-result');
-  if (!url) { res.textContent = '⚠ Cole a URL antes de salvar.'; return; }
-  res.textContent = '⏳ Testando conexão...';
+  // URL já está fixa no código — esta função só testa
   try {
-    const data = await pingSheets(url);
-    if (data.ok) {
-      setSheetsUrl(url);
-      res.textContent = '✅ Conexão OK! URL salva.';
-      setSyncStatus('ok', '<strong>Google Sheets conectado</strong>');
-      setFormSyncStatus('ok', 'Google Sheets conectado');
-      const card = document.getElementById('sheets-setup-card');
-      if (card) card.style.display = 'none';
-      setTimeout(() => { closeSetupModal(); syncNow(); }, 1000);
-    } else {
-      res.textContent = '❌ Erro: ' + (data.error || 'resposta inesperada');
-    }
+    const data = await pingSheets(SHEETS_URL);
+    showToast(data.ok ? '✅ Sheets conectado!' : '❌ Erro: ' + data.error);
   } catch(e) {
-    res.textContent = '❌ Não conectou. Verifique se o deploy está como "Qualquer pessoa".';
+    showToast('❌ Sem conexão com o Sheets.');
   }
 }
+
+function openSetupModal() { saveAndTestUrl(); }
+function closeSetupModal() {}
 
 // ── Enviar fila ao Sheets (push) ───────────────────────────
 async function syncNow() {
@@ -1552,22 +1464,14 @@ async function pullFromSheets(silent) {
 
 // — Init sync state on load —
 function initSync() {
-  const url  = getSheetsUrl();
-  const bar  = document.getElementById('sync-bar');
-  const card = document.getElementById('sheets-setup-card');
+  const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'flex';
-  if (card) card.style.display = url ? 'none' : 'block';
-  if (url) {
-    const ls  = localStorage.getItem(LS_LAST_SYNC);
-    const lts = ls
-      ? 'última sync ' + new Date(ls).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
-      : 'nunca sincronizado';
-    setSyncStatus('pending', '<strong>Google Sheets conectado</strong> · <span style="opacity:.6">(' + lts + ')</span>');
-    setFormSyncStatus('ok', 'Google Sheets conectado');
-  } else {
-    setSyncStatus('warn', '<strong>Google Sheets não configurado</strong> · dados ficam só neste dispositivo');
-    setFormSyncStatus('warn', 'Sheets não configurado — configure no Dashboard');
-  }
+  const ls  = localStorage.getItem(LS_LAST_SYNC);
+  const lts = ls
+    ? 'última sync ' + new Date(ls).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    : 'nunca sincronizado';
+  setSyncStatus('pending', '<strong>Google Sheets conectado</strong> · <span style="opacity:.6">(' + lts + ')</span>');
+  setFormSyncStatus('ok', 'Google Sheets conectado');
   updateQueueBadge();
 }
 

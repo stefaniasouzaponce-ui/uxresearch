@@ -1265,6 +1265,14 @@ function resetForm() {
 
 function saveSession() {
   const data = collectData();
+  // DEBUG — abre alert com os campos críticos
+  console.log('collectData:', JSON.stringify(data, null, 2));
+  const debug = [
+    'segmento: ' + (data.segmento || '(vazio)'),
+    'audio: '    + (data.audio    || '(vazio)'),
+    'audio-ajudou: ' + (data['audio-ajudou'] || '(vazio)'),
+  ].join('\n');
+  alert('DEBUG — campos novos:\n\n' + debug);
   sessions.push(data);
   saveSessions();
   addToQueue(data);

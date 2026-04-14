@@ -20,7 +20,7 @@ const COLUMNS = [
   'obs-age','obs-itens','obs-comp','obs-nota',
   'freq','exp-geral','motivo',
   'teve-prob','etapa','verbatim','resolucao',
-  'clareza','reacao-erro','momento-perdido',
+  'clareza','reacao-erro','audio','audio-ajudou','momento-perdido',
   'uma-mudanca','reuso','notas-pesq',
   'synced_at'
 ];

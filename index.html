@@ -1556,33 +1556,41 @@ function buildBarChart(title, keys, labels, colors, getter, note) {
 }
 
 function buildDonut(title, segments, note) {
-  // segments: [{label, value, color}]
-  const total = segments.reduce((a,s)=>a+s.value,0);
-  if (!total) return `<div class="chart-card"><div class="chart-title">${title}</div><div class="chart-empty">Sem dados</div></div>`;
-  let offset = 0;
-  const r = 54, cx = 70, cy = 70, stroke = 22;
+  const total = segments.reduce((a, seg) => a + seg.value, 0);
+  if (!total) return `<div class="chart-card"><div class="chart-title">${title}</div><div class="chart-empty">Sem dados suficientes</div></div>`;
+
+  const r = 52, cx = 70, cy = 70, stroke = 20;
   const circ = 2 * Math.PI * r;
-  const arcs = segments.map(s => {
-    const dash = (s.value/total)*circ;
-    const arc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}"
-      stroke-width="${stroke}" stroke-dasharray="${dash} ${circ-dash}"
-      stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" opacity="${s.value?1:.2}"/>`;
-    offset += dash;
-    return arc;
-  });
-  const legend = segments.map(s => `
+  let cumulative = 0;
+
+  const arcs = segments.map(seg => {
+    const dash    = (seg.value / total) * circ;
+    const gap     = circ - dash;
+    const rotate  = (cumulative / total) * 360 - 90;
+    cumulative   += seg.value;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
+      stroke="${seg.color}" stroke-width="${stroke}"
+      stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+      transform="rotate(${rotate.toFixed(2)} ${cx} ${cy})"
+      opacity="${seg.value ? 1 : 0.15}"/>`;
+  }).join('');
+
+  const legend = segments.map(seg => `
     <div class="donut-leg">
-      <span class="donut-dot" style="background:${s.color}"></span>
-      <span class="donut-lbl">${s.label}</span>
-      <span class="donut-val">${s.value} <span style="opacity:.5;font-size:9px">${pct(s.value,total)}%</span></span>
+      <span class="donut-dot" style="background:${seg.color}"></span>
+      <span class="donut-lbl">${seg.label}</span>
+      <span class="donut-val">${seg.value} <span style="opacity:.5;font-size:9px">${pct(seg.value, total)}%</span></span>
     </div>`).join('');
+
   return `<div class="chart-card">
     <div class="chart-title">${title}</div>
     ${note ? `<div class="chart-note">${note}</div>` : ''}
     <div class="donut-wrap">
       <svg viewBox="0 0 140 140" width="120" height="120" style="flex-shrink:0">
-        ${arcs.join('')}
-        <text x="${cx}" y="${cy+4}" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="20" fill="var(--d-ink)">${total}</text>
+        ${arcs}
+        <text x="${cx}" y="${cy + 5}" text-anchor="middle"
+          font-family="Nunito" font-weight="800" font-size="22"
+          fill="var(--d-ink)">${total}</text>
       </svg>
       <div class="donut-legend">${legend}</div>
     </div>

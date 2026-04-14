@@ -1059,6 +1059,7 @@ textarea::placeholder { color: var(--ink-mute); }
             <div class="charts-row" id="d-charts1"></div>
             <div class="charts-row" id="d-charts2"></div>
             <div class="charts-row" id="d-charts3"></div>
+            <div class="charts-row" id="d-charts4"></div>
             <div id="d-friction"></div>
           </div>
         </div>
@@ -1688,11 +1689,12 @@ function renderOverview() {
   if (!sessions.length) { oc.style.display='none'; oe.style.display='flex'; return; }
   oc.style.display = 'block'; oe.style.display = 'none';
 
-  const data = filteredSessions();
+  // Visão Geral considera apenas sessões do Modo Entrevista completo
+  const data = filteredSessions().filter(s => !s.modo || s.modo === 'entrevista');
   const n = data.length;
 
   if (n === 0) {
-    ['d-stats','d-charts1','d-charts2','d-charts3','d-friction'].forEach(id => {
+    ['d-stats','d-charts1','d-charts2','d-charts3','d-charts4','d-friction'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = id==='d-stats'
         ? '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</div>'
@@ -1815,6 +1817,24 @@ function renderOverview() {
       s => s.motivo
     );
 
+  // ── Row 4: Perfil Estimado ───────────────────────────────
+  const charts4El = document.getElementById('d-charts4');
+  if (charts4El) {
+    charts4El.innerHTML =
+      buildBarChart('Perfil Estimado dos Usuários',
+        ['adolescente','adulto','idoso'],
+        ['Adolescente','Adulto','Idoso'],
+        ['#AFF6FF','#60A5FA','#F5A623'],
+        s => s['obs-age']
+      ) +
+      buildBarChart('Segmento das Lojas Visitadas',
+        ['Atacado','Varejo','Atacarejo'],
+        ['Atacado','Varejo','Atacarejo'],
+        ['#2EDAAC','#60A5FA','#F5A623'],
+        s => s.segmento
+      );
+  }
+
   // ── Friction heatmap ─────────────────────────────────────
   const eKeys = Object.keys(ETAPAS).filter(k => k !== 'nenhuma');
   const eData = eKeys.map(k => count(data, s => (s.etapa||'').split('|').includes(k)));
@@ -1934,6 +1954,9 @@ function renderField() {
   const data = filteredSessions().filter(s => s.modo === 'observacao');
   const n    = data.length;
 
+  // Todas as sessões (ambos os modos) para o card de Divergência
+  const allData = filteredSessions();
+
   if (!n) {
     empty.style.display = 'flex';
     empty.querySelector('.empty-sub').textContent =
@@ -1953,13 +1976,14 @@ function renderField() {
   const nPausa    = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
   const nReleu    = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
 
-  // Divergência: pesquisador viu problema vs usuário reportou
+  // Divergência: observado (modo observação) vs relatado (modo entrevista)
   const nObsProb  = count(data, s => {
     const comp = s['obs-comp'] || '';
     return comp.includes('chamou-atendente') || comp.includes('erro-visivel') ||
            comp.includes('sacola-balanca') || comp.includes('pgto-multiplo');
   });
-  const nRelProb  = count(data, s => s['teve-prob'] === 'bastante' || s['teve-prob'] === 'pequeno');
+  const entrevistaData = allData.filter(s => !s.modo || s.modo === 'entrevista');
+  const nRelProb  = count(entrevistaData, s => s['teve-prob'] === 'bastante' || s['teve-prob'] === 'pequeno');
   const divergencia = nObsProb - nRelProb;
 
   // ── KPI cards ───────────────────────────────────────────
@@ -2024,8 +2048,8 @@ function renderField() {
             </div>`).join('')}
         </div>
         <div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Usuário relatou</div>
-          ${buildBarChartInner(data, n,
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Usuário relatou <span style="opacity:.5">(entrevistas · ${entrevistaData.length} sessões)</span></div>
+          ${buildBarChartInner(entrevistaData, entrevistaData.length,
             ['nao','pequeno','bastante'],
             ['Sem problema','Problema pequeno','Bastante dificuldade'],
             ['#2EDAAC','#F5A623','#F87171'],

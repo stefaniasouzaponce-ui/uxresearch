@@ -1265,24 +1265,16 @@ function resetForm() {
 
 function saveSession() {
   const data = collectData();
-  // DEBUG — abre alert com os campos críticos
-  console.log('collectData:', JSON.stringify(data, null, 2));
-  const debug = [
-    'segmento: ' + (data.segmento || '(vazio)'),
-    'audio: '    + (data.audio    || '(vazio)'),
-    'audio-ajudou: ' + (data['audio-ajudou'] || '(vazio)'),
-  ].join('\n');
-  alert('DEBUG — campos novos:\n\n' + debug);
   sessions.push(data);
   saveSessions();
   addToQueue(data);
   updateSessionsList();
   updateTabBadge();
-  resetForm();              // ← reseta o formulário imediatamente, sem esperar sync
+  resetForm();
   showToast('💾 Sessão salva! Pronto para a próxima.');
-  // Sync em background — não bloqueia o formulário
   if (getSheetsUrl()) syncNow();
 }
+
 
 function updateSessionsList() { /* dados vivem no Sheets */ }
 

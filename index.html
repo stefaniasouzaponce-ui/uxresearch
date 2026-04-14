@@ -135,6 +135,59 @@ body {
 }
 
 /* Session meta bar */
+.mode-selector {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mode-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  margin-right: 4px;
+}
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: 'Nunito', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+}
+.mode-btn:hover { border-color: var(--brand); color: var(--brand); }
+.mode-btn.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,68,91,.25);
+}
+.mode-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  background: rgba(255,255,255,.2);
+  border-radius: 8px;
+  padding: 1px 6px;
+  letter-spacing: .04em;
+}
+.mode-btn:not(.active) .mode-badge {
+  background: var(--surface2);
+  color: var(--ink-mute);
+}
+
 .session-bar {
   background: var(--surface); border-bottom: 1px solid var(--border);
   padding: 10px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
@@ -693,6 +746,19 @@ textarea::placeholder { color: var(--ink-mute); }
     <div class="sf"><label>ID Sessão</label><input type="text" id="f-session" readonly class="fw80" style="font-family:'DM Mono',monospace;font-size:11.5px;color:var(--ink-soft)"></div>
   </div>
 
+  <!-- MODE SELECTOR -->
+  <div class="mode-selector" id="mode-selector">
+    <span class="mode-label">Modo</span>
+    <button class="mode-btn active" id="mode-btn-entrevista" onclick="setMode('entrevista')">
+      🎤 Entrevista
+      <span class="mode-badge">completo</span>
+    </button>
+    <button class="mode-btn" id="mode-btn-observacao" onclick="setMode('observacao')">
+      👁 Só Observação
+      <span class="mode-badge">silencioso</span>
+    </button>
+  </div>
+
   <div class="form-content">
 
     <div class="prog-wrap">
@@ -746,7 +812,7 @@ textarea::placeholder { color: var(--ink-mute); }
     </div>
 
     <!-- 01 -->
-    <div class="section">
+    <div class="section interview-only" id="sec-01">
       <div class="sec-head"><span class="sec-num">01</span><span class="sec-title">Experiência Geral</span><span class="sec-time">~1 min</span></div>
       <div class="sec-body">
         <div class="qb">
@@ -782,7 +848,7 @@ textarea::placeholder { color: var(--ink-mute); }
     </div>
 
     <!-- 02 -->
-    <div class="section">
+    <div class="section interview-only" id="sec-02">
       <div class="sec-head"><span class="sec-num">02</span><span class="sec-title">Dificuldades & Fricções</span><span class="sec-time">~1,5 min</span></div>
       <div class="sec-body">
         <div class="qb">
@@ -824,7 +890,7 @@ textarea::placeholder { color: var(--ink-mute); }
     </div>
 
     <!-- 03 -->
-    <div class="section">
+    <div class="section interview-only" id="sec-03">
       <div class="sec-head"><span class="sec-num">03</span><span class="sec-title">Fluxo & Interface</span><span class="sec-time">~1 min</span></div>
       <div class="sec-body">
         <div class="qb">
@@ -873,7 +939,7 @@ textarea::placeholder { color: var(--ink-mute); }
     </div>
 
     <!-- 04 -->
-    <div class="section">
+    <div class="section interview-only" id="sec-04">
       <div class="sec-head"><span class="sec-num">04</span><span class="sec-title">Encerramento Rápido</span><span class="sec-time">~30 s</span></div>
       <div class="sec-body">
         <div class="qb">
@@ -894,7 +960,7 @@ textarea::placeholder { color: var(--ink-mute); }
     </div>
 
     <!-- Notas -->
-    <div class="bot-card">
+    <div class="bot-card interview-only" id="card-notas">
       <span class="bot-title">📝 Notas do pesquisador</span>
       <span class="q-tip" style="color:var(--ink-soft)">Hipóteses, contexto do ambiente, algo fora do roteiro</span>
       <textarea id="notas-pesq" rows="3" placeholder="Qualquer observação relevante que não estava no roteiro..."></textarea>
@@ -910,7 +976,7 @@ textarea::placeholder { color: var(--ink-mute); }
         <span class="form-sync-dot" id="form-sync-dot"></span>
         <span id="form-sync-label">—</span>
       </div>
-      <button class="btn btn-accent" onclick="saveSession()">💾 Salvar e iniciar nova sessão</button>
+      <button class="btn btn-accent" id="btn-salvar" onclick="saveSession()">💾 Salvar e iniciar nova sessão</button>
       <button class="btn btn-dash" onclick="goToDash()">
         <span>📊 Ver Dashboard de Análise</span>
         <span class="dash-arrow">→</span>
@@ -940,8 +1006,8 @@ textarea::placeholder { color: var(--ink-mute); }
       <div class="d-nav-section">
         <div class="d-nav-section-title">Navegação</div>
         <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Visão Geral</button>
+        <button class="d-nav-btn" id="dnav-field" onclick="switchDashView('field')"><span class="nav-icon">👁</span> Observações</button>
         <button class="d-nav-btn" id="dnav-sessions" onclick="switchDashView('sessions')"><span class="nav-icon">☰</span> Sessões <span class="nav-count" id="d-count-badge">0</span></button>
-        <button class="d-nav-btn" id="dnav-compare" onclick="switchDashView('compare')"><span class="nav-icon">⇄</span> Comparar</button>
         <button class="d-nav-btn" id="dnav-verbatims" onclick="switchDashView('verbatims')"><span class="nav-icon">❝</span> Verbatims</button>
       </div>
 
@@ -1016,10 +1082,14 @@ textarea::placeholder { color: var(--ink-mute); }
           </div>
         </div>
 
-        <!-- Compare -->
-        <div class="d-view" id="dview-compare">
-          <div id="d-compare-picker"></div>
-          <div id="d-compare-content"></div>
+        <!-- Observações de Campo -->
+        <div class="d-view" id="dview-field">
+          <div class="empty-state" id="d-field-empty" style="display:none">
+            <div class="empty-icon">👁</div>
+            <div class="empty-title">Sem observações</div>
+            <div class="empty-sub">Preencha os blocos de observação silenciosa para ver as análises aqui.</div>
+          </div>
+          <div id="d-field-content"></div>
         </div>
 
         <!-- Verbatims -->
@@ -1098,7 +1168,7 @@ function applyFilters() {
   const hasFilter = activeFilters.loja || activeFilters.segmento || activeFilters.de || activeFilters.ate;
   const badge = document.getElementById('filter-badge');
   const clearBtn = document.getElementById('filter-clear-btn');
-  if (!badge || !clearBtn) { renderOverview(); renderSessTable(); renderVerbatims(); renderCompare(); return; }
+  if (!badge || !clearBtn) { renderOverview(); renderField(); renderSessTable(); renderVerbatims(); return; }
   if (hasFilter) {
     const n = filteredSessions().length;
     badge.style.display = 'flex';
@@ -1109,9 +1179,9 @@ function applyFilters() {
     clearBtn.style.display = 'none';
   }
   renderOverview();
+  renderField();
   renderSessTable();
   renderVerbatims();
-  renderCompare();
 }
 
 function clearFilters() {
@@ -1193,12 +1263,17 @@ function updateProgress() {
   const form = document.getElementById('screen-form');
   if (!form) return;
   const rg = {};
+  // Only count radios in visible sections
   form.querySelectorAll('input[type="radio"]').forEach(r => {
+    // Skip if parent is hidden (interview-only in observacao mode)
+    if (r.closest('.interview-only') && currentMode === 'observacao') return;
     if (!rg[r.name]) rg[r.name] = false;
     if (r.checked) rg[r.name] = true;
   });
   const rT = Object.keys(rg).length, rD = Object.values(rg).filter(Boolean).length;
-  const tIds = ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'];
+  const tIds = currentMode === 'entrevista'
+    ? ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido']
+    : ['obs-nota'];
   let tT = tIds.length, tD = 0;
   tIds.forEach(id => { if (document.getElementById(id)?.value.trim().length > 2) tD++; });
   const total = rT + tT, done = rD + tD;
@@ -1231,6 +1306,7 @@ function collectData() {
     loja:        document.getElementById('f-store').value,
     segmento:    document.getElementById('f-segmento').value,
     pesquisador: document.getElementById('f-researcher').value,
+    modo:        currentMode,
   };
   // Radios e checkboxes apenas dentro do formulário
   form.querySelectorAll('input[type="radio"]:checked').forEach(r => { d[r.name] = r.value; });
@@ -1259,8 +1335,8 @@ function resetForm() {
   document.getElementById('f-date').value = n.toISOString().slice(0,10);
   document.getElementById('f-time').value = n.toTimeString().slice(0,5);
   newSid();
-  updateProgress();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Reset mode back to entrevista
+  setMode('entrevista');
 }
 
 function saveSession() {
@@ -1483,7 +1559,7 @@ function switchDashView(v) {
   document.querySelectorAll('.d-nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('dview-' + v).classList.add('active');
   document.getElementById('dnav-' + v).classList.add('active');
-  const titles = { overview:'Visão Geral', sessions:'Sessões', compare:'Comparar', verbatims:'Verbatims & Falas' };
+  const titles = { overview:'Visão Geral', field:'Observações de Campo', sessions:'Sessões', verbatims:'Verbatims & Falas' };
   document.getElementById('d-page-title').textContent = titles[v];
 }
 
@@ -1491,9 +1567,9 @@ function renderDash() {
   populateFilterSelects();
   renderDSidebar();
   renderOverview();
+  renderField();
   renderSessTable();
   renderVerbatims();
-  renderCompare();
 }
 
 // ================================
@@ -1528,7 +1604,7 @@ function renderDSidebar() {
 
 function toggleSel(id) {
   if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
-  renderDSidebar(); renderCompare();
+  renderDSidebar();
 }
 
 // ================================
@@ -1847,6 +1923,168 @@ function delSession(id) {
 // ================================
 // VERBATIMS
 // ================================
+// ================================
+// OBSERVAÇÕES DE CAMPO
+// ================================
+function renderField() {
+  const empty   = document.getElementById('d-field-empty');
+  const content = document.getElementById('d-field-content');
+  if (!empty || !content) return;
+
+  const data = filteredSessions();
+  const n    = data.length;
+
+  if (!n) { empty.style.display = 'flex'; content.innerHTML = ''; return; }
+  empty.style.display = 'none';
+
+  // ── KPIs de observação ───────────────────────────────────
+  const nFluido   = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
+  const nHesitou  = count(data, s => (s['obs-comp']||'').includes('hesitou-inicio'));
+  const nAtend    = count(data, s => (s['obs-comp']||'').includes('chamou-atendente'));
+  const nErro     = count(data, s => (s['obs-comp']||'').includes('erro-visivel'));
+  const nSacola   = count(data, s => (s['obs-comp']||'').includes('sacola-balanca'));
+  const nPgto     = count(data, s => (s['obs-comp']||'').includes('pgto-multiplo'));
+  const nPausa    = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
+  const nReleu    = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
+
+  // Divergência: pesquisador viu problema vs usuário reportou
+  const nObsProb  = count(data, s => {
+    const comp = s['obs-comp'] || '';
+    return comp.includes('chamou-atendente') || comp.includes('erro-visivel') ||
+           comp.includes('sacola-balanca') || comp.includes('pgto-multiplo');
+  });
+  const nRelProb  = count(data, s => s['teve-prob'] === 'bastante' || s['teve-prob'] === 'pequeno');
+  const divergencia = nObsProb - nRelProb;
+
+  // ── KPI cards ───────────────────────────────────────────
+  const kpis = `
+    <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card" style="border-top:3px solid var(--d-green)">
+        <div class="stat-label">Uso fluido</div>
+        <div class="stat-value" style="color:var(--d-green)">${nFluido}</div>
+        <div class="stat-sub">${pct(nFluido,n)}% sem nenhum problema observado</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--d-amber)">
+        <div class="stat-label">Hesitaram ao iniciar</div>
+        <div class="stat-value" style="color:var(--d-amber)">${nHesitou}</div>
+        <div class="stat-sub">${pct(nHesitou,n)}% das sessões</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--d-red)">
+        <div class="stat-label">Chamaram atendente</div>
+        <div class="stat-value" style="color:var(--d-red)">${nAtend}</div>
+        <div class="stat-sub">${pct(nAtend,n)}% das sessões</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--d-red)">
+        <div class="stat-label">Erro visível no terminal</div>
+        <div class="stat-value" style="color:var(--d-red)">${nErro}</div>
+        <div class="stat-sub">${pct(nErro,n)}% das sessões</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--d-amber)">
+        <div class="stat-label">Problema sacola/balança</div>
+        <div class="stat-value" style="color:var(--d-amber)">${nSacola}</div>
+        <div class="stat-sub">${pct(nSacola,n)}% das sessões</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--d-cyan)">
+        <div class="stat-label">Divergência obs. vs relato</div>
+        <div class="stat-value" style="color:var(--d-cyan)">${divergencia > 0 ? '+' + divergencia : divergencia}</div>
+        <div class="stat-sub">Obs: ${nObsProb} problemas · Relatados: ${nRelProb}</div>
+      </div>
+    </div>`;
+
+  // ── Divergência explicada ────────────────────────────────
+  const divCard = `
+    <div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">
+      <div class="chart-title">Divergência — O que o pesquisador viu vs o que o usuário reportou</div>
+      <div class="chart-note">Quando o observado é maior que o relatado, o usuário não reconheceu o problema como tal — sinal de fricção naturalizada.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Pesquisador observou</div>
+          ${[
+            { label:'Chamou atendente',        v: nAtend,  c:'#F87171' },
+            { label:'Erro visível no terminal', v: nErro,   c:'#F87171' },
+            { label:'Prob. sacola / balança',  v: nSacola, c:'#F5A623' },
+            { label:'Múltiplas tentativas pgto',v: nPgto,  c:'#F5A623' },
+            { label:'Pausas longas',            v: nPausa,  c:'#60A5FA' },
+            { label:'Releu a tela',             v: nReleu,  c:'#60A5FA' },
+          ].map(({label,v,c}) => `
+            <div class="bar-row">
+              <span class="bar-label">${label}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${pct(v,n)}%;background:${c}">
+                  ${v > 0 ? `<span class="bar-val">${v}</span>` : ''}
+                </div>
+              </div>
+              <span class="bar-pct">${pct(v,n)}%</span>
+            </div>`).join('')}
+        </div>
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Usuário relatou</div>
+          ${buildBarChartInner(data, n,
+            ['nao','pequeno','bastante'],
+            ['Sem problema','Problema pequeno','Bastante dificuldade'],
+            ['#2EDAAC','#F5A623','#F87171'],
+            s => s['teve-prob']
+          )}
+        </div>
+      </div>
+    </div>`;
+
+  // ── Perfil observado ─────────────────────────────────────
+  const row2 = `
+    <div class="charts-row" style="margin-bottom:12px">
+      ${buildBarChart('Perfil Etário Observado',
+        ['18-30','31-45','46-60','60+'],
+        ['18–30','31–45','46–60','60+'],
+        ['#AFF6FF','#60A5FA','#F5A623','#F87171'],
+        s => s['obs-age']
+      )}
+      ${buildBarChart('Volume de Itens Observado',
+        ['1-5','6-15','16+'],
+        ['1–5 itens','6–15 itens','16+ itens'],
+        ['#2EDAAC','#60A5FA','#F5A623'],
+        s => s['obs-itens']
+      )}
+    </div>`;
+
+  // ── Notas de campo ───────────────────────────────────────
+  const notas = data.filter(s => s['obs-nota'] && s['obs-nota'].trim().length > 3);
+  const notasHtml = notas.length ? `
+    <div class="chart-card">
+      <div class="chart-title">Notas de Campo — Momentos de Fricção Observados</div>
+      <div class="chart-note">${notas.length} sessão(ões) com nota registrada</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+        ${notas.map(s => `
+          <div style="background:var(--d-surface2);border-radius:8px;padding:13px 15px;border-left:3px solid var(--d-amber)">
+            <div style="font-size:13px;line-height:1.6;color:var(--d-ink)">${s['obs-nota']}</div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">
+              <span class="vtag">${s.session_id}</span>
+              ${s.loja ? `<span class="vtag">${s.loja}</span>` : ''}
+              ${s['obs-age'] ? `<span class="vtag">${lbl('obs-age',s['obs-age'])}</span>` : ''}
+              ${s.data ? `<span class="vtag">${s.data}</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  content.innerHTML = kpis + divCard + row2 + notasHtml;
+}
+
+// helper interno para barras sem chart-card wrapper
+function buildBarChartInner(data, n, keys, labels, colors, getter) {
+  const vals  = keys.map(k => count(data, s => getter(s) === k));
+  const maxV  = Math.max(...vals, 1);
+  return keys.map((k,i) => `
+    <div class="bar-row">
+      <span class="bar-label">${labels[i]}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${vals[i]/maxV*100}%;background:${colors[i]}">
+          ${vals[i]>0?`<span class="bar-val">${vals[i]}</span>`:''}
+        </div>
+      </div>
+      <span class="bar-pct">${pct(vals[i],n)}%</span>
+    </div>`).join('');
+}
+
 function renderVerbatims() {
   const empty = document.getElementById('d-verb-empty');
   const list = document.getElementById('d-verbatims-list');
@@ -1873,91 +2111,55 @@ function renderVerbatims() {
 }
 
 // ================================
-// COMPARE
-// ================================
-function renderCompare() {
-  const picker  = document.getElementById('d-compare-picker');
-  const content = document.getElementById('d-compare-content');
-  if (!picker || !content) return;
-  const pool    = filteredSessions();
-  const sel     = pool.filter(s => selectedIds.has(s.session_id));
-
-  // ── Picker — sempre visível na view Comparar ──────────────
-  if (!pool.length) {
-    picker.innerHTML = `<div class="compare-no-sessions">Nenhuma sessão disponível. Preencha o formulário primeiro.</div>`;
-    content.innerHTML = '';
-    return;
-  }
-
-  picker.innerHTML = `
-    <div class="compare-picker">
-      <div class="compare-picker-title">Selecione as sessões para comparar</div>
-      <div class="compare-chips">
-        ${pool.map(s => {
-          const score = parseInt(s['exp-geral']) || 0;
-          const color = SCORE_COLORS[score] || '#7A7A8A';
-          const isSel = selectedIds.has(s.session_id);
-          return `<button class="cmp-chip ${isSel?'sel':''}" onclick="toggleSel('${s.session_id}')">
-            <span class="cmp-dot" style="background:${color}"></span>
-            <span>${s.session_id}</span>
-            <span style="opacity:.6;font-size:10px;font-weight:400">${s.loja||''} ${s.data||''}</span>
-            ${score ? `<span style="font-family:'DM Mono',monospace;font-size:10px;color:${color}">${score}★</span>` : ''}
-            <span class="cmp-check">✓</span>
-          </button>`;
-        }).join('')}
-      </div>
-      <div class="compare-hint">
-        ${sel.length === 0 ? 'Toque em 2 ou mais sessões para comparar' :
-          sel.length === 1 ? 'Selecione mais uma sessão para iniciar a comparação' :
-          `${sel.length} sessões selecionadas — comparação abaixo`}
-      </div>
-    </div>`;
-
-  // ── Comparação — só aparece com 2+ selecionadas ───────────
-  if (sel.length < 2) { content.innerHTML = ''; return; }
-
-  const fields = [
-    { label:'Data / Hora',        r: s => `${s.data||'—'} ${s.horario||''}` },
-    { label:'Loja',               r: s => s.loja||'—' },
-    { label:'Segmento',           r: s => s.segmento||'—' },
-    { label:'Perfil Etário',      r: s => lbl('obs-age',s['obs-age']) },
-    { label:'Volume de Itens',    r: s => lbl('obs-itens',s['obs-itens']) },
-    { label:'Frequência de Uso',  r: s => lbl('freq',s.freq) },
-    { label:'Nota Geral',         r: s => { const sc=parseInt(s['exp-geral'])||0; return sc?`<span class="score-pill s${sc}" style="width:auto;padding:4px 10px">${sc} / 5</span>`:'—'; }},
-    { label:'Motivo da Escolha',  r: s => lbl('motivo',s.motivo) },
-    { label:'Teve Problema?',     r: s => lbl('teve-prob',s['teve-prob']) },
-    { label:'Etapas Difíceis',    r: s => { const et=(s.etapa||'').split('|').filter(Boolean); return et.map(k=>`<span class="chip-sm" style="margin:2px">${ETAPAS[k]||k}</span>`).join('')||'—'; }},
-    { label:'Fala — Dificuldade', r: s => s.verbatim?`<span class="cc-val q">${s.verbatim}</span>`:'—' },
-    { label:'Como Resolveu',      r: s => lbl('resolucao',s.resolucao) },
-    { label:'Clareza da Interface',r: s => lbl('clareza',s.clareza) },
-    { label:'Áudio no terminal',   r: s => lbl('audio',s.audio) },
-    { label:'Áudio ajudou?',       r: s => s.audio==='sem-audio' ? '—' : lbl('audio-ajudou',s['audio-ajudou'])||'—' },
-    { label:'Momento de Confusão',r: s => s['momento-perdido']||'—' },
-    { label:'Mudaria Uma Coisa',  r: s => s['uma-mudanca']?`<span class="cc-val q">${s['uma-mudanca']}</span>`:'—' },
-    { label:'Usaria Novamente?',  r: s => lbl('reuso',s.reuso) },
-    { label:'Nota de Campo',      r: s => s['obs-nota']||'—' },
-  ];
-
-  content.innerHTML = fields.map(f => `
-    <div class="compare-row">
-      <div class="compare-row-head">${f.label}</div>
-      <div class="compare-cells">
-        ${sel.map(s => `
-          <div class="compare-cell">
-            <div class="cc-session">${s.session_id} · ${s.loja||'—'}</div>
-            <div class="cc-val">${f.r(s)}</div>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
-}
-
-// ================================
 // TOAST
 // ================================
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ================================
+// MODE SELECTOR
+// ================================
+let currentMode = 'entrevista';
+
+function setMode(mode) {
+  currentMode = mode;
+
+  // Update buttons
+  document.getElementById('mode-btn-entrevista').classList.toggle('active', mode === 'entrevista');
+  document.getElementById('mode-btn-observacao').classList.toggle('active', mode === 'observacao');
+
+  // Show/hide interview sections
+  document.querySelectorAll('.interview-only').forEach(el => {
+    el.style.display = mode === 'entrevista' ? '' : 'none';
+  });
+
+  // Update header meta text
+  const meta = document.querySelector('.header-meta');
+  if (meta) {
+    meta.textContent = mode === 'entrevista'
+      ? 'Preencher logo após o uso do terminal'
+      : 'Modo observação — registrar sem entrevistar';
+  }
+
+  // Update save button label
+  const btn = document.getElementById('btn-salvar');
+  if (btn) {
+    btn.textContent = mode === 'entrevista'
+      ? '💾 Salvar e iniciar nova sessão'
+      : '👁 Salvar observação';
+  }
+
+  // Update timer badge
+  const timer = document.querySelector('.timer-badge');
+  if (timer) {
+    timer.textContent = mode === 'entrevista' ? '⏱ ~4 min' : '⏱ ~1 min';
+  }
+
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ================================

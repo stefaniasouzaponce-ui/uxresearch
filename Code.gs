@@ -8,7 +8,7 @@
 const SHEET_NAME = 'Sessões';
 
 const COLUMNS = [
-  'session_id','data','horario','loja','segmento','pesquisador',
+  'session_id','data','horario','loja','segmento','pesquisador','modo',
   'obs-age','obs-itens','obs-comp','obs-nota',
   'freq','exp-geral','motivo',
   'teve-prob','etapa','verbatim','resolucao',

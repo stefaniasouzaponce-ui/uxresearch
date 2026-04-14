@@ -441,7 +441,9 @@ textarea::placeholder { color: var(--ink-mute); }
 .d-view.active { display: block; }
 
 /* Stats cards */
-.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.stats-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width:1100px) { .stats-grid { grid-template-columns: repeat(3,1fr); } }
+@media (max-width:640px)  { .stats-grid { grid-template-columns: 1fr 1fr; } }
 .stat-card {
   background: var(--d-surface); border: 1px solid var(--d-border); border-radius: 10px;
   padding: 16px 18px; position: relative; overflow: hidden;
@@ -464,6 +466,19 @@ textarea::placeholder { color: var(--ink-mute); }
 .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .chart-card { background: var(--d-surface); border: 1px solid var(--d-border); border-radius: 10px; padding: 18px; }
 .chart-title { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 16px; color: var(--d-ink); }
+.chart-note { font-size: 11px; color: var(--d-ink-soft); margin-top: -10px; margin-bottom: 14px; font-style: italic; }
+.chart-empty { font-size: 12px; color: var(--d-ink-mute); padding: 20px 0; text-align: center; }
+
+/* Donut */
+.donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 130px; }
+.donut-leg { display: flex; align-items: center; gap: 7px; }
+.donut-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.donut-lbl { font-size: 12px; color: var(--d-ink-soft); flex: 1; line-height: 1.3; }
+.donut-val { font-family: 'DM Mono', monospace; font-size: 11.5px; font-weight: 500; color: var(--d-ink); white-space: nowrap; }
+
+/* Bar pct */
+.bar-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--d-ink-mute); width: 32px; text-align: right; flex-shrink: 0; }
 
 .bar-row { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
 .bar-label { font-size: 11.5px; color: var(--d-ink-soft); width: 125px; flex-shrink: 0; text-align: right; line-height: 1.3; }
@@ -978,6 +993,7 @@ textarea::placeholder { color: var(--ink-mute); }
             <div class="stats-grid" id="d-stats"></div>
             <div class="charts-row" id="d-charts1"></div>
             <div class="charts-row" id="d-charts2"></div>
+            <div class="charts-row" id="d-charts3"></div>
             <div id="d-friction"></div>
           </div>
         </div>
@@ -1510,36 +1526,147 @@ function toggleSel(id) {
 // ================================
 // OVERVIEW
 // ================================
+// ── helpers ────────────────────────────────────────────────
+function pct(v, n) { return n > 0 ? Math.round(v/n*100) : 0; }
+function count(data, fn) { return data.filter(fn).length; }
+function avg(data, fn) {
+  const vals = data.map(fn).filter(Boolean);
+  return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+}
+
+function buildBarChart(title, keys, labels, colors, getter, note) {
+  const src = filteredSessions();
+  const vals = keys.map(k => src.filter(s => getter(s) === k).length);
+  const maxV = Math.max(...vals, 1);
+  const total = vals.reduce((a,b)=>a+b,0);
+  return `<div class="chart-card">
+    <div class="chart-title">${title}</div>
+    ${note ? `<div class="chart-note">${note}</div>` : ''}
+    ${keys.map((k,i) => `
+      <div class="bar-row">
+        <span class="bar-label">${labels[i]}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${vals[i]/maxV*100}%;background:${colors[i]}">
+            ${vals[i]>0?`<span class="bar-val">${vals[i]}</span>`:''}
+          </div>
+        </div>
+        <span class="bar-pct">${total>0?Math.round(vals[i]/total*100):0}%</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function buildDonut(title, segments, note) {
+  // segments: [{label, value, color}]
+  const total = segments.reduce((a,s)=>a+s.value,0);
+  if (!total) return `<div class="chart-card"><div class="chart-title">${title}</div><div class="chart-empty">Sem dados</div></div>`;
+  let offset = 0;
+  const r = 54, cx = 70, cy = 70, stroke = 22;
+  const circ = 2 * Math.PI * r;
+  const arcs = segments.map(s => {
+    const dash = (s.value/total)*circ;
+    const arc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}"
+      stroke-width="${stroke}" stroke-dasharray="${dash} ${circ-dash}"
+      stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" opacity="${s.value?1:.2}"/>`;
+    offset += dash;
+    return arc;
+  });
+  const legend = segments.map(s => `
+    <div class="donut-leg">
+      <span class="donut-dot" style="background:${s.color}"></span>
+      <span class="donut-lbl">${s.label}</span>
+      <span class="donut-val">${s.value} <span style="opacity:.5;font-size:9px">${pct(s.value,total)}%</span></span>
+    </div>`).join('');
+  return `<div class="chart-card">
+    <div class="chart-title">${title}</div>
+    ${note ? `<div class="chart-note">${note}</div>` : ''}
+    <div class="donut-wrap">
+      <svg viewBox="0 0 140 140" width="120" height="120" style="flex-shrink:0">
+        ${arcs.join('')}
+        <text x="${cx}" y="${cy+4}" text-anchor="middle" font-family="Nunito" font-weight="800" font-size="20" fill="var(--d-ink)">${total}</text>
+      </svg>
+      <div class="donut-legend">${legend}</div>
+    </div>
+  </div>`;
+}
+
+// ── renderOverview ──────────────────────────────────────────
 function renderOverview() {
   const oc = document.getElementById('d-ov-content');
   const oe = document.getElementById('d-ov-empty');
   if (!oc || !oe) return;
-  if (!sessions.length) { oc.style.display = 'none'; oe.style.display = 'flex'; return; }
+  if (!sessions.length) { oc.style.display='none'; oe.style.display='flex'; return; }
   oc.style.display = 'block'; oe.style.display = 'none';
 
   const data = filteredSessions();
   const n = data.length;
+
   if (n === 0) {
-    document.getElementById('d-stats').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros aplicados.</div>';
-    document.getElementById('d-charts1').innerHTML = '';
-    document.getElementById('d-charts2').innerHTML = '';
-    document.getElementById('d-friction').innerHTML = '';
+    ['d-stats','d-charts1','d-charts2','d-charts3','d-friction'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = id==='d-stats'
+        ? '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</div>'
+        : '';
+    });
     return;
   }
-  const scores = data.map(s => parseInt(s['exp-geral'])).filter(Boolean);
-  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
-  const probs = data.filter(s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno').length;
-  const att = data.filter(s => (s.resolucao||'').includes('atendente')||(s['obs-comp']||'').includes('chamou-atendente')).length;
+
+  // ── KPIs ────────────────────────────────────────────────
+  const avgScore   = avg(data, s => parseInt(s['exp-geral']) || null);
+  const nProblems  = count(data, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
+  const nBastante  = count(data, s => s['teve-prob']==='bastante');
+  const nAtt       = count(data, s => (s.resolucao||'').includes('atendente')||(s['obs-comp']||'').includes('chamou-atendente'));
+  const nFluido    = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
+  const nSemAudio  = count(data, s => s.audio==='sem-audio');
+  const nComAudio  = n - nSemAudio;
+  const nReuso     = count(data, s => s.reuso==='sim-sempre');
+  const nDesiste   = count(data, s => s.reuso==='prefiro-caixa');
+  const lojas      = [...new Set(data.map(s=>s.loja).filter(Boolean))].length;
+  const segmentos  = [...new Set(data.map(s=>s.segmento).filter(Boolean))];
+
+  // Score color for avg
+  const avgN = parseFloat(avgScore);
+  const avgColor = avgN >= 4 ? 'var(--d-green)' : avgN >= 3 ? 'var(--d-amber)' : 'var(--d-red)';
 
   document.getElementById('d-stats').innerHTML = `
-    <div class="stat-card ca"><div class="stat-label">Sessões</div><div class="stat-value">${n}</div><div class="stat-sub">${[...new Set(data.map(s=>s.loja).filter(Boolean))].length} loja(s)</div></div>
-    <div class="stat-card cy"><div class="stat-label">Nota Média</div><div class="stat-value" style="color:var(--d-amber)">${avg}</div><div class="stat-sub">de 5 pontos</div></div>
-    <div class="stat-card ct"><div class="stat-label">Com Problemas</div><div class="stat-value" style="color:var(--d-red)">${probs}</div><div class="stat-sub">${n>0?Math.round(probs/n*100):0}% das sessões</div></div>
-    <div class="stat-card cb"><div class="stat-label">Chamaram Atend.</div><div class="stat-value" style="color:var(--d-blue)">${att}</div><div class="stat-sub">${n>0?Math.round(att/n*100):0}% das sessões</div></div>
+    <div class="stat-card ca">
+      <div class="stat-label">Sessões coletadas</div>
+      <div class="stat-value">${n}</div>
+      <div class="stat-sub">${lojas} loja(s)${segmentos.length ? ' · ' + segmentos.join(', ') : ''}</div>
+    </div>
+    <div class="stat-card cy">
+      <div class="stat-label">Nota média de experiência</div>
+      <div class="stat-value" style="color:${avgColor}">${avgScore}</div>
+      <div class="stat-sub" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        ${[1,2,3,4,5].map(v => {
+          const c = count(data, s => parseInt(s['exp-geral'])===v);
+          return `<span style="font-size:10px;font-family:'DM Mono',monospace;background:${SCORE_COLORS[v]}22;color:${SCORE_COLORS[v]};padding:1px 5px;border-radius:4px">${v}★ ${c}</span>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="stat-card ct">
+      <div class="stat-label">Relataram problemas</div>
+      <div class="stat-value" style="color:var(--d-red)">${nProblems}</div>
+      <div class="stat-sub">${pct(nProblems,n)}% do total · <span style="color:var(--d-red)">${nBastante} bastante</span></div>
+    </div>
+    <div class="stat-card cb">
+      <div class="stat-label">Precisaram de atendente</div>
+      <div class="stat-value" style="color:var(--d-blue)">${nAtt}</div>
+      <div class="stat-sub">${pct(nAtt,n)}% · Fluido sem ajuda: ${nFluido}</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--d-green)">
+      <div class="stat-label">Voltariam sempre</div>
+      <div class="stat-value" style="color:var(--d-green)">${nReuso}</div>
+      <div class="stat-sub">${pct(nReuso,n)}% · Preferem caixa: ${nDesiste}</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--d-ink-soft)">
+      <div class="stat-label">Terminais com áudio</div>
+      <div class="stat-value" style="color:var(--d-cyan)">${nComAudio}</div>
+      <div class="stat-sub">${pct(nComAudio,n)}% das sessões · Sem áudio: ${nSemAudio}</div>
+    </div>
   `;
 
-  // Score dist
-  const sd = [1,2,3,4,5].map(v => data.filter(s => parseInt(s['exp-geral'])===v).length);
+  // ── Row 1: Notas + Frequência ────────────────────────────
+  const sd = [1,2,3,4,5].map(v => count(data, s => parseInt(s['exp-geral'])===v));
   document.getElementById('d-charts1').innerHTML = `
     <div class="chart-card">
       <div class="chart-title">Distribuição de Notas</div>
@@ -1547,64 +1674,98 @@ function renderOverview() {
         ${[1,2,3,4,5].map((v,i) => `
           <div class="s-dot-col">
             <div class="s-dot" style="background:${sd[i]?SCORE_COLORS[v]+'22':'var(--d-surface2)'};color:${SCORE_COLORS[v]};height:${40+sd[i]*8}px">${v}</div>
-            <div class="s-dot-label">Nota ${v}</div><div class="s-dot-count">${sd[i]}×</div>
+            <div class="s-dot-label">Nota ${v}</div>
+            <div class="s-dot-count">${sd[i]}×</div>
           </div>`).join('')}
       </div>
     </div>
-    ${buildBarChart('Frequência de Uso',
+    ${buildBarChart('Frequência de Uso do Self-Checkout',
       ['primeira-vez','raramente','as-vezes','sempre'],
       ['Primeira vez','Raramente','Às vezes','Sempre'],
       ['#AFF6FF','#F5A623','#60A5FA','#2EDAAC'],
       s => s.freq
-    )}
-  `;
+    )}`;
 
+  // ── Row 2: Problemas + Reuso ─────────────────────────────
   document.getElementById('d-charts2').innerHTML =
     buildBarChart('Severidade dos Problemas',
-      ['nao','pequeno','bastante'], ['Sem problema','Pequeno','Bastante'],
-      ['#2EDAAC','#F5A623','#F87171'], s => s['teve-prob']
+      ['nao','pequeno','bastante'],
+      ['Sem problema','Problema pequeno','Bastante dificuldade'],
+      ['#2EDAAC','#F5A623','#F87171'],
+      s => s['teve-prob']
     ) +
     buildBarChart('Intenção de Reuso',
       ['sim-sempre','depende-fila','talvez','prefiro-caixa'],
-      ['Sim, sempre','Depende da fila','Talvez','Prefiro caixa'],
-      ['#2EDAAC','#60A5FA','#F5A623','#F87171'], s => s.reuso
+      ['Sim, sempre','Depende da fila','Talvez','Prefiro o caixa'],
+      ['#2EDAAC','#60A5FA','#F5A623','#F87171'],
+      s => s.reuso
     );
 
-  // Friction
+  // ── Row 3: Áudio + Motivo da escolha ────────────────────
+  const audioData = [
+    { label:'Self sem áudio',  value: count(data, s=>s.audio==='sem-audio'),    color:'#3D6E84' },
+    { label:'Tinha e usou',    value: count(data, s=>s.audio==='tinha-usou'),   color:'#2EDAAC' },
+    { label:'Tinha, ignorou',  value: count(data, s=>s.audio==='tinha-ignorou'),color:'#F5A623' },
+    { label:'Não percebeu',    value: count(data, s=>s.audio==='nao-percebeu'), color:'#F87171' },
+  ];
+  const audioUsouCount = count(data, s=>s.audio==='tinha-usou'||s.audio==='tinha-ignorou');
+  const audioAjudouCount = count(data, s=>s['audio-ajudou']==='sim-muito'||s['audio-ajudou']==='um-pouco');
+
+  const audioNote = audioUsouCount > 0
+    ? `${audioAjudouCount} de ${audioUsouCount} que tiveram áudio acharam útil (${pct(audioAjudouCount,audioUsouCount)}%)`
+    : null;
+
+  document.getElementById('d-charts3').innerHTML =
+    buildDonut('Áudio no Terminal', audioData, audioNote) +
+    buildBarChart('Por que escolheu o self-checkout?',
+      ['fila-menor','poucos-itens','preferencia','unico-aberto'],
+      ['Fila menor','Poucos itens','Preferência','Era o único aberto'],
+      ['#60A5FA','#2EDAAC','#AFF6FF','#F5A623'],
+      s => s.motivo
+    );
+
+  // ── Friction heatmap ─────────────────────────────────────
   const eKeys = Object.keys(ETAPAS).filter(k => k !== 'nenhuma');
-  const eData = eKeys.map(k => data.filter(s => (s.etapa||'').split('|').includes(k)).length);
-  const maxE = Math.max(...eData, 1);
+  const eData = eKeys.map(k => count(data, s => (s.etapa||'').split('|').includes(k)));
+  const maxE  = Math.max(...eData, 1);
+  // Sort by frequency descending
+  const sorted = eKeys.map((k,i) => ({ k, v: eData[i] })).sort((a,b) => b.v-a.v);
+
   document.getElementById('d-friction').innerHTML = `
     <div class="chart-card">
-      <div class="chart-title">🔥 Mapa de Fricções — Etapas Problemáticas</div>
+      <div class="chart-title" style="display:flex;align-items:center;gap:8px">
+        <span>Mapa de Fricções</span>
+        <span style="font-size:10px;font-weight:400;color:var(--d-ink-soft);font-family:'DM Mono',monospace">etapas problemáticas — ordem por frequência</span>
+      </div>
       <div class="friction-grid">
-        ${eKeys.map((k,i) => `
+        ${sorted.map(({k,v}) => `
           <div class="friction-item">
-            <div class="friction-bar-bg" style="height:${Math.round(eData[i]/maxE*80)}%"></div>
+            <div class="friction-bar-bg" style="height:${Math.round(v/maxE*80)}%"></div>
             <div class="friction-name">${ETAPAS[k]}</div>
-            <div class="friction-count">${eData[i]}</div>
-            <div class="friction-pct">${Math.round(eData[i]/n*100)}% das sessões</div>
+            <div class="friction-count">${v}</div>
+            <div class="friction-pct">${pct(v,n)}% das sessões</div>
           </div>`).join('')}
       </div>
-    </div>`;
-}
+    </div>
 
-function buildBarChart(title, keys, labels, colors, getter) {
-  const src = filteredSessions();
-  const data = keys.map(k => src.filter(s => getter(s) === k).length);
-  const maxV = Math.max(...data, 1);
-  return `<div class="chart-card">
-    <div class="chart-title">${title}</div>
-    ${keys.map((k,i) => `
-      <div class="bar-row">
-        <span class="bar-label">${labels[i]}</span>
-        <div class="bar-track">
-          <div class="bar-fill" style="width:${data[i]/maxV*100}%;background:${colors[i]}">
-            ${data[i]>0?`<span class="bar-val">${data[i]}</span>`:''}
+    <div class="chart-card" style="margin-top:12px">
+      <div class="chart-title">Comportamentos Observados no Terminal</div>
+      ${Object.entries(OBS_COMP).filter(([k]) => k !== 'sem-problema').map(([k, lbl]) => {
+        const v = count(data, s => (s['obs-comp']||'').split('|').includes(k));
+        const w = pct(v, n);
+        const col = k==='chamou-atendente'||k==='erro-visivel'||k==='pgto-multiplo' ? '#F87171'
+                  : k==='pausas-longas'||k==='releu-tela' ? '#F5A623' : '#60A5FA';
+        return `<div class="bar-row">
+          <span class="bar-label">${lbl}</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${w}%;background:${col}">
+              ${v>0?`<span class="bar-val">${v}</span>`:''}
+            </div>
           </div>
-        </div>
-      </div>`).join('')}
-  </div>`;
+          <span class="bar-pct">${w}%</span>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 // ================================

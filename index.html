@@ -1993,8 +1993,14 @@ function renderField() {
   const divergencia = nObsProb - nRelProb;
 
   // ── KPI cards ───────────────────────────────────────────
+  const lojas = [...new Set(data.map(s => s.loja).filter(Boolean))].length;
   const kpis = `
     <div class="stats-grid" style="margin-bottom:14px">
+      <div class="stat-card" style="border-top:3px solid var(--d-cyan)">
+        <div class="stat-label">Sessões observadas</div>
+        <div class="stat-value" style="color:var(--d-cyan)">${n}</div>
+        <div class="stat-sub">${lojas} loja(s) · só observação</div>
+      </div>
       <div class="stat-card" style="border-top:3px solid var(--d-green)">
         <div class="stat-label">Uso fluido</div>
         <div class="stat-value" style="color:var(--d-green)">${nFluido}</div>

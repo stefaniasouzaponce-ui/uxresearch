@@ -776,10 +776,9 @@ textarea::placeholder { color: var(--ink-mute); }
         <div class="qb">
           <span class="q-label">Perfil estimado <span class="obs-tag">obs</span></span>
           <div class="chips">
-            <input class="chip" type="radio" name="obs-age" id="a1" value="18-30"><label for="a1">18–30</label>
-            <input class="chip" type="radio" name="obs-age" id="a2" value="31-45"><label for="a2">31–45</label>
-            <input class="chip" type="radio" name="obs-age" id="a3" value="46-60"><label for="a3">46–60</label>
-            <input class="chip" type="radio" name="obs-age" id="a4" value="60+"><label for="a4">60+</label>
+            <input class="chip" type="radio" name="obs-age" id="a1" value="adolescente"><label for="a1">Adolescente</label>
+            <input class="chip" type="radio" name="obs-age" id="a2" value="adulto"><label for="a2">Adulto</label>
+            <input class="chip" type="radio" name="obs-age" id="a3" value="idoso"><label for="a3">Idoso</label>
           </div>
         </div>
         <div class="qb">
@@ -1204,7 +1203,7 @@ const LBL = {
   'teve-prob': {'nao':'Sem problema','pequeno':'Pequeno','bastante':'Bastante'},
   resolucao: {'sozinho':'Sozinho','atendente':'Atendente','reiniciou':'Reiniciou','nao-resolveu':'Não resolveu'},
   reuso: {'sim-sempre':'Sim, sempre','depende-fila':'Depende da fila','talvez':'Talvez','prefiro-caixa':'Prefiro caixa'},
-  'obs-age': {'18-30':'18–30','31-45':'31–45','46-60':'46–60','60+':'60+'},
+  'obs-age': {'adolescente':'Adolescente','adulto':'Adulto','idoso':'Idoso'},
   'obs-itens': {'1-5':'1–5 itens','6-15':'6–15','16+':'16+'},
   clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
   'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
@@ -1931,10 +1930,17 @@ function renderField() {
   const content = document.getElementById('d-field-content');
   if (!empty || !content) return;
 
-  const data = filteredSessions();
+  // Apenas sessões do modo Só Observação
+  const data = filteredSessions().filter(s => s.modo === 'observacao');
   const n    = data.length;
 
-  if (!n) { empty.style.display = 'flex'; content.innerHTML = ''; return; }
+  if (!n) {
+    empty.style.display = 'flex';
+    empty.querySelector('.empty-sub').textContent =
+      'Esta aba considera apenas sessões coletadas no modo "Só Observação". Ainda não há sessões desse tipo.';
+    content.innerHTML = '';
+    return;
+  }
   empty.style.display = 'none';
 
   // ── KPIs de observação ───────────────────────────────────
@@ -2033,8 +2039,8 @@ function renderField() {
   const row2 = `
     <div class="charts-row" style="margin-bottom:12px">
       ${buildBarChart('Perfil Etário Observado',
-        ['18-30','31-45','46-60','60+'],
-        ['18–30','31–45','46–60','60+'],
+        ['adolescente','adulto','idoso'],
+        ['Adolescente','Adulto','Idoso'],
         ['#AFF6FF','#60A5FA','#F5A623','#F87171'],
         s => s['obs-age']
       )}

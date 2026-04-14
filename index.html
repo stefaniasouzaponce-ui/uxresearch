@@ -1842,36 +1842,28 @@ function renderOverview() {
       );
   }
 
-  // ── Divergência: observado vs relatado ─────────────────
-  const obsData    = filteredSessions().filter(s => s.modo === 'observacao');
-  const interData  = data; // já filtrado por entrevista
-  const nO         = obsData.length;
-  const nI         = interData.length;
-
+  // ── Divergência: dentro das entrevistas, obs silenciosa vs relato ──
+  // Usa apenas as sessões de entrevista (data) — mesma sessão, mesmo usuário
   const divEl = document.getElementById('d-divergencia');
   if (divEl) {
-    if (nO === 0 || nI === 0) {
-      divEl.innerHTML = nO === 0 && nI === 0 ? '' : `
-        <div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">
-          <div class="chart-title">Divergência — Observado vs Relatado</div>
-          <div class="chart-note" style="color:var(--d-amber)">
-            ${nO === 0 ? 'Ainda não há sessões de observação silenciosa para comparar.' : 'Ainda não há entrevistas completas para comparar.'}
-          </div>
-        </div>`;
-    } else {
-      const dAtend  = count(obsData, s => (s['obs-comp']||'').includes('chamou-atendente'));
-      const dErro   = count(obsData, s => (s['obs-comp']||'').includes('erro-visivel'));
-      const dSacola = count(obsData, s => (s['obs-comp']||'').includes('sacola-balanca'));
-      const dPgto   = count(obsData, s => (s['obs-comp']||'').includes('pgto-multiplo'));
-      const dPausa  = count(obsData, s => (s['obs-comp']||'').includes('pausas-longas'));
-      const dReleu  = count(obsData, s => (s['obs-comp']||'').includes('releu-tela'));
+    if (!n) { divEl.innerHTML = ''; }
+    else {
+      // Lado esquerdo: o que o pesquisador registrou silenciosamente durante a entrevista
+      const dAtend  = count(data, s => (s['obs-comp']||'').includes('chamou-atendente'));
+      const dErro   = count(data, s => (s['obs-comp']||'').includes('erro-visivel'));
+      const dSacola = count(data, s => (s['obs-comp']||'').includes('sacola-balanca'));
+      const dPgto   = count(data, s => (s['obs-comp']||'').includes('pgto-multiplo'));
+      const dPausa  = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
+      const dReleu  = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
 
-      const nObsTot = count(obsData, s => {
+      // Lado direito: o que o usuário relatou nas perguntas da mesma entrevista
+      const nRelTot = count(data, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
+      const nObsTot = count(data, s => {
         const c = s['obs-comp']||'';
-        return c.includes('chamou-atendente')||c.includes('erro-visivel')||c.includes('sacola-balanca')||c.includes('pgto-multiplo');
+        return c.includes('chamou-atendente')||c.includes('erro-visivel')||
+               c.includes('sacola-balanca')||c.includes('pgto-multiplo');
       });
-      const nRelTot = count(interData, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
-      const divNum  = nObsTot - nRelTot;
+      const divNum = nObsTot - nRelTot;
 
       divEl.innerHTML = `
         <div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">
@@ -1885,19 +1877,20 @@ function renderOverview() {
             </span>
           </div>
           <div class="chart-note">
+            Comparação dentro das mesmas entrevistas — o que o pesquisador registrou silenciosamente vs o que o usuário relatou quando perguntado.
             Quando observado &gt; relatado, o usuário normalizou a fricção sem percebê-la como problema.
-            <span style="opacity:.6">· ${nO} obs. silenciosas · ${nI} entrevistas</span>
+            <span style="opacity:.6">· ${n} entrevistas</span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">
             <div>
               <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;
                 letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">
-                👁 Pesquisador observou <span style="opacity:.5">(${nO} sessões)</span>
+                👁 Pesquisador observou silenciosamente
               </div>
               ${[
-                { label:'Chamou atendente',         v:dAtend,  c:'#F87171' },
+                { label:'Chamou atendente',          v:dAtend,  c:'#F87171' },
                 { label:'Erro visível no terminal',  v:dErro,   c:'#F87171' },
-                { label:'Prob. sacola / balança',   v:dSacola, c:'#F5A623' },
+                { label:'Prob. sacola / balança',    v:dSacola, c:'#F5A623' },
                 { label:'Múltiplas tentativas pgto', v:dPgto,   c:'#F5A623' },
                 { label:'Pausas longas',             v:dPausa,  c:'#60A5FA' },
                 { label:'Releu a tela',              v:dReleu,  c:'#60A5FA' },
@@ -1905,19 +1898,19 @@ function renderOverview() {
                 <div class="bar-row">
                   <span class="bar-label">${label}</span>
                   <div class="bar-track">
-                    <div class="bar-fill" style="width:${pct(v,nO)}%;background:${c}">
+                    <div class="bar-fill" style="width:${pct(v,n)}%;background:${c}">
                       ${v>0?`<span class="bar-val">${v}</span>`:''}
                     </div>
                   </div>
-                  <span class="bar-pct">${pct(v,nO)}%</span>
+                  <span class="bar-pct">${pct(v,n)}%</span>
                 </div>`).join('')}
             </div>
             <div>
               <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;
                 letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">
-                🎤 Usuário relatou <span style="opacity:.5">(${nI} entrevistas)</span>
+                🎤 Mesmo usuário relatou quando perguntado
               </div>
-              ${buildBarChartInner(interData, nI,
+              ${buildBarChartInner(data, n,
                 ['nao','pequeno','bastante'],
                 ['Sem problema','Problema pequeno','Bastante dificuldade'],
                 ['#2EDAAC','#F5A623','#F87171'],

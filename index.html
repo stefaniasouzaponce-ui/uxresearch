@@ -419,25 +419,6 @@ textarea::placeholder { color: var(--ink-mute); }
 }
 .d-nav-btn.active .nav-count { background: rgba(255,255,255,.2); color: #fff; }
 
-.d-sess-section { padding: 8px 14px 14px; flex: 1; overflow-y: auto; }
-.d-sess-section-title {
-  font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase;
-  letter-spacing: 0.12em; color: var(--d-ink-mute); margin-bottom: 8px; padding-top: 8px;
-}
-.s-chip {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--d-border);
-  margin-bottom: 5px; cursor: pointer; transition: all .15s;
-  background: transparent; width: 100%; text-align: left;
-}
-.s-chip:hover { border-color: var(--d-cyan); background: var(--d-surface2); }
-.s-chip.sel { border-color: var(--brand); background: rgba(0,68,91,.35); }
-.s-chip.sel .sc-id { color: var(--d-cyan); }
-.sc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.sc-info { flex: 1; min-width: 0; }
-.sc-id { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: var(--d-ink); }
-.sc-meta { font-size: 10px; color: var(--d-ink-soft); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sc-score { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 4px; }
 .no-sess-msg { text-align: center; padding: 28px 14px; color: var(--d-ink-soft); font-size: 12px; line-height: 1.6; }
 
 /* Main */
@@ -998,7 +979,7 @@ textarea::placeholder { color: var(--ink-mute); }
     <!-- Sidebar -->
     <aside class="d-sidebar">
       <div class="d-logo">
-        <div class="d-logo-label">Pesquisa</div>
+        <div class="d-logo-label">UX Research</div>
         <div class="d-logo-title">Self-Checkout<br>Dashboard</div>
       </div>
 
@@ -1010,10 +991,7 @@ textarea::placeholder { color: var(--ink-mute); }
         <button class="d-nav-btn" id="dnav-verbatims" onclick="switchDashView('verbatims')"><span class="nav-icon">❝</span> Verbatims</button>
       </div>
 
-      <div class="d-sess-section">
-        <div class="d-sess-section-title">Sessões <span id="d-sess-total" style="color:var(--d-ink)">0</span></div>
-        <div id="d-sidebar-sessions"><div class="no-sess-msg" id="d-no-sess">Nenhuma sessão.<br>Preencha o formulário.</div></div>
-      </div>
+
     </aside>
 
     <!-- Main -->
@@ -1583,30 +1561,9 @@ function renderDash() {
 // DASH SIDEBAR
 // ================================
 function renderDSidebar() {
-  const container = document.getElementById('d-sidebar-sessions');
-  const noMsg = document.getElementById('d-no-sess');
-  if (!container || !noMsg) return;
-  const fs = filteredSessions();
-  document.getElementById('d-sess-total').textContent = sessions.length;
-  document.getElementById('d-count-badge').textContent = sessions.length;
-
-  if (!sessions.length) {
-    container.innerHTML = ''; container.appendChild(noMsg); noMsg.style.display = 'block'; return;
-  }
-  noMsg.style.display = 'none';
-  container.innerHTML = filteredSessions().map(s => {
-    const score = parseInt(s['exp-geral']) || 0;
-    const color = SCORE_COLORS[score] || '#7A7A8A';
-    const sel = selectedIds.has(s.session_id);
-    return `<button class="s-chip ${sel?'sel':''}" onclick="toggleSel('${s.session_id}')">
-      <span class="sc-dot" style="background:${color}"></span>
-      <span class="sc-info">
-        <span class="sc-id">${s.session_id}</span>
-        <span class="sc-meta">${s.data||''} · ${s.loja||'—'}</span>
-      </span>
-      ${score ? `<span class="sc-score" style="background:${color}22;color:${color}">${score}</span>` : ''}
-    </button>`;
-  }).join('');
+  // Sidebar de sessões removida — chips não são necessários sem a view Comparar
+  const badge = document.getElementById('d-count-badge');
+  if (badge) badge.textContent = sessions.length;
 }
 
 function toggleSel(id) {

@@ -1190,8 +1190,10 @@ function newSid() {
 }
 
 function updateProgress() {
+  const form = document.getElementById('screen-form');
+  if (!form) return;
   const rg = {};
-  document.querySelectorAll('input[type="radio"]').forEach(r => {
+  form.querySelectorAll('input[type="radio"]').forEach(r => {
     if (!rg[r.name]) rg[r.name] = false;
     if (r.checked) rg[r.name] = true;
   });
@@ -1220,17 +1222,20 @@ document.addEventListener('change', function(e) {
 });
 
 function collectData() {
+  // Escopo restrito ao formulário — evita capturar campos do dashboard
+  const form = document.getElementById('screen-form');
   const d = {
     session_id: document.getElementById('f-session').value,
-    data: document.getElementById('f-date').value,
-    horario: document.getElementById('f-time').value,
-    loja: document.getElementById('f-store').value,
-    segmento: document.getElementById('f-segmento').value,
+    data:        document.getElementById('f-date').value,
+    horario:     document.getElementById('f-time').value,
+    loja:        document.getElementById('f-store').value,
+    segmento:    document.getElementById('f-segmento').value,
     pesquisador: document.getElementById('f-researcher').value,
   };
-  document.querySelectorAll('input[type="radio"]:checked').forEach(r => { d[r.name] = r.value; });
+  // Radios e checkboxes apenas dentro do formulário
+  form.querySelectorAll('input[type="radio"]:checked').forEach(r => { d[r.name] = r.value; });
   const chks = {};
-  document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+  form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
     if (!chks[cb.name]) chks[cb.name] = [];
     chks[cb.name].push(cb.value);
   });
@@ -1243,8 +1248,11 @@ function collectData() {
 }
 
 function resetForm() {
-  document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
-  document.querySelectorAll('textarea, input[type="text"]').forEach(el => { if (!el.readOnly) el.value = ''; });
+  const form = document.getElementById('screen-form');
+  form.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
+  form.querySelectorAll('textarea, input[type="text"]').forEach(el => { if (!el.readOnly) el.value = ''; });
+  // Reset selects (segmento, etc.)
+  form.querySelectorAll('select:not([readonly])').forEach(el => { el.selectedIndex = 0; });
   const qb = document.getElementById('qb-audio-ajudou');
   if (qb) qb.style.display = 'none';
   const n = new Date();

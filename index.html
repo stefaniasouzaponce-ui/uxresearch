@@ -2041,8 +2041,6 @@ function renderField() {
   const data = filteredSessions().filter(s => s.modo === 'observacao');
   const n    = data.length;
 
-  // Todas as sessões (ambos os modos) para o card de Divergência
-  const allData = filteredSessions();
 
   if (!n) {
     empty.style.display = 'flex';
@@ -2062,16 +2060,6 @@ function renderField() {
   const nPgto     = count(data, s => (s['obs-comp']||'').includes('pgto-multiplo'));
   const nPausa    = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
   const nReleu    = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
-
-  // Divergência: observado (modo observação) vs relatado (modo entrevista)
-  const nObsProb  = count(data, s => {
-    const comp = s['obs-comp'] || '';
-    return comp.includes('chamou-atendente') || comp.includes('erro-visivel') ||
-           comp.includes('sacola-balanca') || comp.includes('pgto-multiplo');
-  });
-  const entrevistaData = allData.filter(s => !s.modo || s.modo === 'entrevista');
-  const nRelProb  = count(entrevistaData, s => s['teve-prob'] === 'bastante' || s['teve-prob'] === 'pequeno');
-  const divergencia = nObsProb - nRelProb;
 
   // ── KPI cards ───────────────────────────────────────────
   const lojas = [...new Set(data.map(s => s.loja).filter(Boolean))].length;
@@ -2106,49 +2094,6 @@ function renderField() {
         <div class="stat-label">Problema sacola/balança</div>
         <div class="stat-value" style="color:var(--d-amber)">${nSacola}</div>
         <div class="stat-sub">${pct(nSacola,n)}% das sessões</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-cyan)">
-        <div class="stat-label">Divergência obs. vs relato</div>
-        <div class="stat-value" style="color:var(--d-cyan)">${divergencia > 0 ? '+' + divergencia : divergencia}</div>
-        <div class="stat-sub">Obs: ${nObsProb} problemas · Relatados: ${nRelProb}</div>
-      </div>
-    </div>`;
-
-  // ── Divergência explicada ────────────────────────────────
-  const divCard = `
-    <div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">
-      <div class="chart-title">Divergência — O que o pesquisador viu vs o que o usuário reportou</div>
-      <div class="chart-note">Quando o observado é maior que o relatado, o usuário não reconheceu o problema como tal — sinal de fricção naturalizada.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
-        <div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Pesquisador observou</div>
-          ${[
-            { label:'Chamou atendente',        v: nAtend,  c:'#F87171' },
-            { label:'Erro visível no terminal', v: nErro,   c:'#F87171' },
-            { label:'Prob. sacola / balança',  v: nSacola, c:'#F5A623' },
-            { label:'Múltiplas tentativas pgto',v: nPgto,  c:'#F5A623' },
-            { label:'Pausas longas',            v: nPausa,  c:'#60A5FA' },
-            { label:'Releu a tela',             v: nReleu,  c:'#60A5FA' },
-          ].map(({label,v,c}) => `
-            <div class="bar-row">
-              <span class="bar-label">${label}</span>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:${pct(v,n)}%;background:${c}">
-                  ${v > 0 ? `<span class="bar-val">${v}</span>` : ''}
-                </div>
-              </div>
-              <span class="bar-pct">${pct(v,n)}%</span>
-            </div>`).join('')}
-        </div>
-        <div>
-          <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">Usuário relatou <span style="opacity:.5">(entrevistas · ${entrevistaData.length} sessões)</span></div>
-          ${buildBarChartInner(entrevistaData, entrevistaData.length,
-            ['nao','pequeno','bastante'],
-            ['Sem problema','Problema pequeno','Bastante dificuldade'],
-            ['#2EDAAC','#F5A623','#F87171'],
-            s => s['teve-prob']
-          )}
-        </div>
       </div>
     </div>`;
 

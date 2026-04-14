@@ -822,6 +822,25 @@ textarea::placeholder { color: var(--ink-mute); }
           </div>
         </div>
         <div class="qb">
+          <span class="q-label">O terminal tinha áudio guiando os passos?</span>
+          <span class="q-tip">Alguns terminais falam em voz alta o que o usuário deve fazer a cada etapa.</span>
+          <div class="chips">
+            <input class="chip" type="radio" name="audio" id="au0" value="sem-audio"><label for="au0">Self sem áudio</label>
+            <input class="chip" type="radio" name="audio" id="au1" value="tinha-usou"><label for="au1">Tinha e usou</label>
+            <input class="chip" type="radio" name="audio" id="au2" value="tinha-ignorou"><label for="au2">Tinha e ignorou</label>
+            <input class="chip" type="radio" name="audio" id="au3" value="nao-percebeu"><label for="au3">Não percebeu</label>
+          </div>
+        </div>
+        <div class="qb" id="qb-audio-ajudou" style="display:none">
+          <span class="q-label">O áudio ajudou a entender o que fazer?</span>
+          <div class="chips">
+            <input class="chip ac" type="radio" name="audio-ajudou" id="aa1" value="sim-muito"><label for="aa1">Sim, muito</label>
+            <input class="chip ac" type="radio" name="audio-ajudou" id="aa2" value="um-pouco"><label for="aa2">Um pouco</label>
+            <input class="chip ac" type="radio" name="audio-ajudou" id="aa3" value="nao-ajudou"><label for="aa3">Não ajudou</label>
+            <input class="chip ac" type="radio" name="audio-ajudou" id="aa4" value="atrapalhou"><label for="aa4">Atrapalhou</label>
+          </div>
+        </div>
+        <div class="qb">
           <span class="q-label">Quando apareceu um erro ou alerta, o que você fez?</span>
           <div class="chips">
             <input class="chip" type="radio" name="reacao-erro" id="re5" value="li-resolvi"><label for="re5">Li e resolvi</label>
@@ -1103,6 +1122,8 @@ const LBL = {
   'obs-itens': {'1-5':'1–5 itens','6-15':'6–15','16+':'16+'},
   clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
   'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
+  audio: {'sem-audio':'Self sem áudio','tinha-usou':'Tinha e usou','tinha-ignorou':'Tinha e ignorou','nao-percebeu':'Não percebeu'},
+  'audio-ajudou': {'sim-muito':'Sim, muito','um-pouco':'Um pouco','nao-ajudou':'Não ajudou','atrapalhou':'Atrapalhou'},
 };
 
 const ETAPAS = {
@@ -1172,6 +1193,16 @@ function updateProgress() {
 document.addEventListener('change', updateProgress);
 document.addEventListener('input', updateProgress);
 
+// Mostrar/esconder pergunta de avaliação do áudio
+document.addEventListener('change', function(e) {
+  if (e.target.name === 'audio') {
+    const qb = document.getElementById('qb-audio-ajudou');
+    if (!qb) return;
+    // Só mostra a pergunta de avaliação se o terminal TINHA áudio
+    qb.style.display = (e.target.value === 'tinha-usou' || e.target.value === 'tinha-ignorou') ? 'flex' : 'none';
+  }
+});
+
 function collectData() {
   const d = {
     session_id: document.getElementById('f-session').value,
@@ -1198,6 +1229,8 @@ function collectData() {
 function resetForm() {
   document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
   document.querySelectorAll('textarea, input[type="text"]').forEach(el => { if (!el.readOnly) el.value = ''; });
+  const qb = document.getElementById('qb-audio-ajudou');
+  if (qb) qb.style.display = 'none';
   const n = new Date();
   document.getElementById('f-date').value = n.toISOString().slice(0,10);
   document.getElementById('f-time').value = n.toTimeString().slice(0,5);
@@ -1720,6 +1753,8 @@ function renderCompare() {
     { label:'Fala — Dificuldade', r: s => s.verbatim?`<span class="cc-val q">${s.verbatim}</span>`:'—' },
     { label:'Como Resolveu',      r: s => lbl('resolucao',s.resolucao) },
     { label:'Clareza da Interface',r: s => lbl('clareza',s.clareza) },
+    { label:'Áudio no terminal',   r: s => lbl('audio',s.audio) },
+    { label:'Áudio ajudou?',       r: s => s.audio==='sem-audio' ? '—' : lbl('audio-ajudou',s['audio-ajudou'])||'—' },
     { label:'Momento de Confusão',r: s => s['momento-perdido']||'—' },
     { label:'Mudaria Uma Coisa',  r: s => s['uma-mudanca']?`<span class="cc-val q">${s['uma-mudanca']}</span>`:'—' },
     { label:'Usaria Novamente?',  r: s => lbl('reuso',s.reuso) },

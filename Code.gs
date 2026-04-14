@@ -1,15 +1,7 @@
 // ============================================================
 //  UX Research · Self-Checkout — Google Apps Script Backend
 //
-//  INSTALAÇÃO:
-//  1. Abra script.google.com → novo projeto
-//  2. Cole este código, salve (Ctrl+S)
-//  3. Implantar → Nova implantação → App da Web
-//     · Executar como: Eu mesmo
-//     · Quem pode acessar: Qualquer pessoa
-//  4. Copie a URL gerada e cole no app (Dashboard → ⚙ Reconfigurar)
-//
-//  ATENÇÃO: ao editar e querer publicar mudanças, vá em
+//  ATENÇÃO: ao editar, vá em
 //  Implantar → Gerenciar implantações → editar → Nova versão → Implantar.
 // ============================================================
 
@@ -36,7 +28,6 @@ function doGet(e) {
   try {
     const sheet = getOrCreateSheet();
     const rows  = sheet.getDataRange().getValues();
-
     if (rows.length <= 1) return respond({ ok: true, sessions: [] });
 
     const headers  = rows[0].map(String);
@@ -49,15 +40,12 @@ function doGet(e) {
     });
 
     return respond({ ok: true, sessions });
-
   } catch (err) {
     return respond({ ok: false, error: err.message });
   }
 }
 
 // ── POST ───────────────────────────────────────────────────
-// Body chega como texto puro (sem Content-Type: application/json)
-// para evitar preflight CORS que o Apps Script não suporta.
 function doPost(e) {
   try {
     const raw     = e.postData ? e.postData.contents : '[]';
@@ -70,11 +58,19 @@ function doPost(e) {
     const toInsert = [];
     const dupes    = [];
 
+    // Garante que todas as colunas do COLUMNS existem no cabeçalho
+    ensureColumns(sheet);
+
+    // Re-lê cabeçalho (pode ter sido atualizado por ensureColumns)
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+
     items.forEach(session => {
       const id = String(session.session_id || '');
       if (!id) return;
       if (existing.has(id)) { dupes.push(id); return; }
-      const row = COLUMNS.map(col =>
+
+      // Monta linha na ordem real do cabeçalho (aceita colunas extras)
+      const row = headers.map(col =>
         col === 'synced_at' ? now : (session[col] !== undefined ? String(session[col]) : '')
       );
       toInsert.push(row);
@@ -83,7 +79,7 @@ function doPost(e) {
 
     if (toInsert.length > 0) {
       sheet
-        .getRange(sheet.getLastRow() + 1, 1, toInsert.length, COLUMNS.length)
+        .getRange(sheet.getLastRow() + 1, 1, toInsert.length, headers.length)
         .setValues(toInsert);
     }
 
@@ -93,13 +89,13 @@ function doPost(e) {
       duplicates: dupes.length,
       duplicate_ids: dupes
     });
-
   } catch (err) {
     return respond({ ok: false, error: err.message });
   }
 }
 
 // ── Helpers ────────────────────────────────────────────────
+
 function getOrCreateSheet() {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   let   sheet = ss.getSheetByName(SHEET_NAME);
@@ -114,11 +110,28 @@ function getOrCreateSheet() {
     hdr.setFontWeight('bold');
     sheet.setFrozenRows(1);
 
-    const widths = {1:110, 5:100, 8:240, 9:300, 15:400, 20:400, 22:400};
+    const widths = {1:110, 5:100, 6:100, 9:240, 10:300, 16:400, 21:300, 23:400, 25:400};
     Object.entries(widths).forEach(([col, w]) => sheet.setColumnWidth(Number(col), w));
   }
 
   return sheet;
+}
+
+// Adiciona colunas ausentes ao cabeçalho (não remove as existentes)
+function ensureColumns(sheet) {
+  const lastCol     = sheet.getLastColumn();
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  const existing    = headerRange.getValues()[0].map(String);
+  const missing     = COLUMNS.filter(c => !existing.includes(c));
+
+  if (missing.length === 0) return;
+
+  const startCol = lastCol + 1;
+  const newHeaders = sheet.getRange(1, startCol, 1, missing.length);
+  newHeaders.setValues([missing]);
+  newHeaders.setBackground('#00445B');
+  newHeaders.setFontColor('#AFF6FF');
+  newHeaders.setFontWeight('bold');
 }
 
 function getExistingIds(sheet) {

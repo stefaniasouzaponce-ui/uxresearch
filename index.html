@@ -1294,13 +1294,14 @@ function collectData() {
   // Escopo restrito ao formulário — evita capturar campos do dashboard
   const form = document.getElementById('screen-form');
   const d = {
-    session_id: document.getElementById('f-session').value,
-    data:        document.getElementById('f-date').value,
-    horario:     document.getElementById('f-time').value,
-    loja:        document.getElementById('f-store').value,
-    segmento:    document.getElementById('f-segmento').value,
-    pesquisador: document.getElementById('f-researcher').value,
-    modo:        currentMode,
+    session_id:       document.getElementById('f-session').value,
+    data:             document.getElementById('f-date').value,
+    horario:          document.getElementById('f-time').value,
+    loja:             document.getElementById('f-store').value,
+    segmento:         document.getElementById('f-segmento').value,
+    pesquisador:      document.getElementById('f-researcher').value,
+    modo:             currentMode,
+    'terminal-marca': document.getElementById('terminal-marca') ? document.getElementById('terminal-marca').value : '',
   };
   // Radios e checkboxes apenas dentro do formulário
   form.querySelectorAll('input[type="radio"]:checked').forEach(r => { d[r.name] = r.value; });
@@ -1310,7 +1311,7 @@ function collectData() {
     chks[cb.name].push(cb.value);
   });
   Object.keys(chks).forEach(k => d[k] = chks[k].join('|'));
-  ['obs-nota','terminal-marca','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
+  ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
     const el = document.getElementById(id);
     if (el) d[id] = el.value;
   });
@@ -1323,6 +1324,9 @@ function resetForm() {
   form.querySelectorAll('textarea, input[type="text"]').forEach(el => { if (!el.readOnly) el.value = ''; });
   // Reset selects (segmento, etc.)
   form.querySelectorAll('select:not([readonly])').forEach(el => { el.selectedIndex = 0; });
+  // Reset campo de cabeçalho fora do form scope
+  const marcaEl = document.getElementById('terminal-marca');
+  if (marcaEl) marcaEl.value = '';
   const qb = document.getElementById('qb-audio-ajudou');
   if (qb) qb.style.display = 'none';
   const n = new Date();

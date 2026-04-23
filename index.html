@@ -15,7 +15,7 @@
   --brand:        #00445B;   /* azul petróleo — cor primária */
   --brand-mid:    #005E7A;   /* hover de botões primários */
   --brand-light:  #E8F4F8;   /* fundos e destaques suaves */
-  --cyan:         #A34DFF;   /* secundária — ícones, bordas de destaque */
+  --cyan:         #3498DB;   /* secundária — ícones, bordas de destaque */
   --cyan-dim:     rgba(175,246,255,.15);
 
   /* ── Formulário (modo claro) ── */
@@ -43,7 +43,7 @@
   --d-ink:        #E8F4F8;   /* quase branco azulado */
   --d-ink-soft:   #7EB0C4;   /* boa legibilidade */
   --d-ink-mute:   #3D6E84;
-  --d-cyan:       #A34DFF;   /* destaque primário no dark */
+  --d-cyan:       #3498DB;   /* destaque primário no dark */
   --d-amber:      #F5A623;
   --d-green:      #2EDAAC;
   --d-blue:       #60A5FA;
@@ -1182,7 +1182,7 @@ function clearFilters() {
   applyFilters();
 }
 
-const SC = ['#A34DFF','#FFB547','#FFB547','#2EDAAC','#2EDAAC'];
+const SC = ['#3498DB','#FFB547','#FFB547','#2EDAAC','#2EDAAC'];
 const SCORE_COLORS = ['','#F87171','#F5A623','#F5A623','#2EDAAC','#2EDAAC'];
 
 const LBL = {
@@ -1768,7 +1768,7 @@ function renderOverview() {
     ${buildBarChart('Frequência de Uso do Self-Checkout',
       ['primeira-vez','raramente','as-vezes','sempre'],
       ['Primeira vez','Raramente','Às vezes','Sempre'],
-      ['#A34DFF','#F5A623','#60A5FA','#2EDAAC'],
+      ['#3498DB','#F5A623','#60A5FA','#2EDAAC'],
       s => s.freq
     )}`;
 
@@ -1803,7 +1803,7 @@ function renderOverview() {
     buildBarChart('Por que escolheu o self-checkout?',
       ['fila-menor','poucos-itens','preferencia','unico-aberto'],
       ['Fila menor','Poucos itens','Preferência','Era o único aberto'],
-      ['#60A5FA','#2EDAAC','#A34DFF','#F5A623'],
+      ['#60A5FA','#2EDAAC','#3498DB','#F5A623'],
       s => s.motivo
     );
 
@@ -1811,7 +1811,7 @@ function renderOverview() {
   if (charts4El) {
     charts4El.innerHTML =
       '<div class="chart-card"><div class="chart-title">Perfil Estimado dos Usuários</div>' +
-      buildBarChartInner(data, n, ['adolescente','adulto','idoso'], ['Adolescente','Adulto','Idoso'], ['#A34DFF','#60A5FA','#F5A623'], s => s['obs-age']) +
+      buildBarChartInner(data, n, ['adolescente','adulto','idoso'], ['Adolescente','Adulto','Idoso'], ['#3498DB','#60A5FA','#F5A623'], s => s['obs-age']) +
       '</div>' +
       '<div class="chart-card"><div class="chart-title">Volume de Itens por Sessão</div>' +
       buildBarChartInner(data, n, ['1-5','6-15','16+'], ['1–5 itens','6–15 itens','16+ itens'], ['#2EDAAC','#60A5FA','#F5A623'], s => s['obs-itens']) +
@@ -1938,7 +1938,7 @@ function renderField() {
     '<div class="stat-card" style="border-top:3px solid var(--d-amber)"><div class="stat-label">Prob. sacola/balança</div><div class="stat-value" style="color:var(--d-amber)">' + nSacola + '</div><div class="stat-sub">' + pct(nSacola,n) + '% das sessões</div></div>' +
     '</div>' +
     '<div class="charts-row" style="margin-bottom:12px">' +
-    '<div class="chart-card"><div class="chart-title">Perfil Etário Observado</div>' + buildBarChartInner(data,n,['adolescente','adulto','idoso'],['Adolescente','Adulto','Idoso'],['#A34DFF','#60A5FA','#F5A623'],s=>s['obs-age']) + '</div>' +
+    '<div class="chart-card"><div class="chart-title">Perfil Etário Observado</div>' + buildBarChartInner(data,n,['adolescente','adulto','idoso'],['Adolescente','Adulto','Idoso'],['#3498DB','#60A5FA','#F5A623'],s=>s['obs-age']) + '</div>' +
     '<div class="chart-card"><div class="chart-title">Volume de Itens Observado</div>' + buildBarChartInner(data,n,['1-5','6-15','16+'],['1–5 itens','6–15 itens','16+ itens'],['#2EDAAC','#60A5FA','#F5A623'],s=>s['obs-itens']) + '</div>' +
     '</div>' +
     '<div class="charts-row" style="margin-bottom:12px">' +
@@ -1963,7 +1963,7 @@ function buildMarcasChart(data, n) {
     return '<div class="bar-row">' +
       '<span class="bar-label">' + marca + '</span>' +
       '<div class="bar-track">' +
-        '<div class="bar-fill" style="width:' + (v/maxM*100) + '%;background:#A34DFF">' +
+        '<div class="bar-fill" style="width:' + (v/maxM*100) + '%;background:#3498DB">' +
           (v > 0 ? '<span class="bar-val">' + v + '</span>' : '') +
         '</div>' +
       '</div>' +

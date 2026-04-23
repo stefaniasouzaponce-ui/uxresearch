@@ -985,7 +985,7 @@ textarea::placeholder { color: var(--ink-mute); }
 
       <div class="d-nav-section">
         <div class="d-nav-section-title">Navegação</div>
-        <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Visão geral (entrevistas)</button>
+        <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Visão Geral</button>
         <button class="d-nav-btn" id="dnav-field" onclick="switchDashView('field')"><span class="nav-icon">👁</span> Observações</button>
         <button class="d-nav-btn" id="dnav-sessions" onclick="switchDashView('sessions')"><span class="nav-icon">☰</span> Sessões <span class="nav-count" id="d-count-badge">0</span></button>
         <button class="d-nav-btn" id="dnav-verbatims" onclick="switchDashView('verbatims')"><span class="nav-icon">❝</span> Verbatims</button>
@@ -997,7 +997,7 @@ textarea::placeholder { color: var(--ink-mute); }
     <!-- Main -->
     <main class="d-main">
       <div class="d-topbar">
-        <div class="d-page-title" id="d-page-title">Visão geral (entrevistas)</div>
+        <div class="d-page-title" id="d-page-title">Visão Geral</div>
       </div>
 
       <!-- FILTER BAR -->
@@ -1544,7 +1544,7 @@ function switchDashView(v) {
   document.querySelectorAll('.d-nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('dview-' + v).classList.add('active');
   document.getElementById('dnav-' + v).classList.add('active');
-  const titles = { overview:'Visão geral (entrevistas)', field:'Observações de Campo', sessions:'Sessões', verbatims:'Verbatims & Falas' };
+  const titles = { overview:'Visão Geral', field:'Observações de Campo', sessions:'Sessões', verbatims:'Verbatims & Falas' };
   document.getElementById('d-page-title').textContent = titles[v];
 }
 
@@ -1653,7 +1653,7 @@ function renderOverview() {
   if (!sessions.length) { oc.style.display='none'; oe.style.display='flex'; return; }
   oc.style.display = 'block'; oe.style.display = 'none';
 
-  // Visão geral (entrevistas) considera apenas sessões do Modo Entrevista completo
+  // Visão Geral considera apenas sessões do Modo Entrevista completo
   const data = filteredSessions().filter(s => !s.modo || s.modo === 'entrevista');
   const n = data.length;
 
@@ -1785,18 +1785,24 @@ function renderOverview() {
   const charts4El = document.getElementById('d-charts4');
   if (charts4El) {
     charts4El.innerHTML =
-      buildBarChart('Perfil Estimado dos Usuários',
-        ['adolescente','adulto','idoso'],
-        ['Adolescente','Adulto','Idoso'],
-        ['#AFF6FF','#60A5FA','#F5A623'],
-        s => s['obs-age']
-      ) +
-      buildBarChart('Segmento das Lojas Visitadas',
-        ['Atacado','Varejo','Atacarejo'],
-        ['Atacado','Varejo','Atacarejo'],
-        ['#2EDAAC','#60A5FA','#F5A623'],
-        s => s.segmento
-      );
+      `<div class="chart-card">
+        <div class="chart-title">Perfil Estimado dos Usuários</div>
+        ${buildBarChartInner(data, n,
+          ['adolescente','adulto','idoso'],
+          ['Adolescente','Adulto','Idoso'],
+          ['#AFF6FF','#60A5FA','#F5A623'],
+          s => s['obs-age']
+        )}
+      </div>` +
+      `<div class="chart-card">
+        <div class="chart-title">Segmento das Lojas Visitadas</div>
+        ${buildBarChartInner(data, n,
+          ['Atacado','Varejo','Atacarejo'],
+          ['Atacado','Varejo','Atacarejo'],
+          ['#2EDAAC','#60A5FA','#F5A623'],
+          s => s.segmento
+        )}
+      </div>`;
   }
 
   // ── Divergência: dentro das entrevistas, obs silenciosa vs relato ──
@@ -2057,18 +2063,24 @@ function renderField() {
   // ── Perfil observado ─────────────────────────────────────
   const row2 = `
     <div class="charts-row" style="margin-bottom:12px">
-      ${buildBarChart('Perfil Etário Observado',
-        ['adolescente','adulto','idoso'],
-        ['Adolescente','Adulto','Idoso'],
-        ['#AFF6FF','#60A5FA','#F5A623','#F87171'],
-        s => s['obs-age']
-      )}
-      ${buildBarChart('Volume de Itens Observado',
-        ['1-5','6-15','16+'],
-        ['1–5 itens','6–15 itens','16+ itens'],
-        ['#2EDAAC','#60A5FA','#F5A623'],
-        s => s['obs-itens']
-      )}
+      <div class="chart-card">
+        <div class="chart-title">Perfil Etário Observado</div>
+        ${buildBarChartInner(data, n,
+          ['adolescente','adulto','idoso'],
+          ['Adolescente','Adulto','Idoso'],
+          ['#AFF6FF','#60A5FA','#F5A623'],
+          s => s['obs-age']
+        )}
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Volume de Itens Observado</div>
+        ${buildBarChartInner(data, n,
+          ['1-5','6-15','16+'],
+          ['1–5 itens','6–15 itens','16+ itens'],
+          ['#2EDAAC','#60A5FA','#F5A623'],
+          s => s['obs-itens']
+        )}
+      </div>
     </div>`;
 
   // ── Notas de campo ───────────────────────────────────────

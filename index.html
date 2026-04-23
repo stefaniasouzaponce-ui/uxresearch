@@ -732,11 +732,11 @@ textarea::placeholder { color: var(--ink-mute); }
   <div class="mode-selector" id="mode-selector">
     <span class="mode-label">Modo</span>
     <button class="mode-btn active" id="mode-btn-entrevista" onclick="setMode('entrevista')">
-      🎤 Entrevista
+       Entrevista
       <span class="mode-badge">completo</span>
     </button>
     <button class="mode-btn" id="mode-btn-observacao" onclick="setMode('observacao')">
-      👁 Só Observação
+       Só Observação
       <span class="mode-badge">silencioso</span>
     </button>
   </div>
@@ -2115,8 +2115,8 @@ function setMode(mode) {
   const btn = document.getElementById('btn-salvar');
   if (btn) {
     btn.textContent = mode === 'entrevista'
-      ? '💾 Salvar e iniciar nova sessão'
-      : '👁 Salvar observação';
+      ? ' Salvar e iniciar nova sessão'
+      : ' Salvar observação';
   }
 
   // Update timer badge

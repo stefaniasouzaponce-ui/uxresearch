@@ -830,7 +830,6 @@ textarea::placeholder { color: var(--ink-mute); }
             <input class="chip" type="radio" name="motivo" id="mo2" value="poucos-itens"><label for="mo2">Poucos itens</label>
             <input class="chip" type="radio" name="motivo" id="mo3" value="preferencia"><label for="mo3">Prefiro assim</label>
             <input class="chip" type="radio" name="motivo" id="mo4" value="unico-aberto"><label for="mo4">Era o único aberto</label>
-             <input class="chip" type="radio" name="motivo" id="mo5" value="mais-rápido"><label for="mo4">Mais rápido</label>
           </div>
         </div>
       </div>
@@ -1811,8 +1810,8 @@ function renderOverview() {
       '<div class="chart-card"><div class="chart-title">Tipo de Tela do Terminal</div>' +
       buildBarChartInner(data, n, ['horizontal','vertical'], ['Horizontal','Vertical'], ['#60A5FA','#F5A623'], s => s['tela-tipo']) +
       '</div>' +
-      '<div class="chart-card"><div class="chart-title">Segmento das Lojas Visitadas</div>' +
-      buildBarChartInner(data, n, ['Atacado','Varejo','Atacarejo'], ['Atacado','Varejo','Atacarejo'], ['#2EDAAC','#60A5FA','#F5A623'], s => s.segmento) +
+      '<div class="chart-card"><div class="chart-title">Marcas dos Terminais</div><div class="chart-note">Campo aberto — marcas identificadas em campo</div>' +
+      buildMarcasChart(data, n) +
       '</div>';
   }
 
@@ -1964,6 +1963,71 @@ function buildBarChartInner(data, n, keys, labels, colors, getter) {
       </div>
       <span class="bar-pct">${pct(vals[i],n)}%</span>
     </div>`).join('');
+}
+
+// ================================
+// SESSIONS TABLE
+// ================================
+function renderSessTable() {
+  const empty = document.getElementById('d-sess-empty');
+  const wrap  = document.getElementById('d-table-wrap');
+  if (!empty || !wrap) return;
+  if (!sessions.length) { empty.style.display='flex'; wrap.style.display='none'; return; }
+  const data = filteredSessions();
+  if (!data.length) {
+    empty.style.display='none'; wrap.style.display='block';
+    document.getElementById('d-tbody').innerHTML =
+      '<tr><td colspan="15" style="text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</td></tr>';
+    return;
+  }
+  empty.style.display='none'; wrap.style.display='block';
+  document.getElementById('d-tbody').innerHTML = data.map((s, i) => {
+    const score  = parseInt(s['exp-geral']) || 0;
+    const pCls   = s['teve-prob']==='bastante' ? 'red' : s['teve-prob']==='pequeno' ? 'amber' : 'green';
+    const etapas = (s.etapa||'').split('|').filter(Boolean).map(e => ETAPAS[e]||e);
+    return '<tr onclick="toggleRow(' + i + ')">' +
+      '<td style="color:var(--d-ink-soft);font-size:11px;padding-left:12px">▶</td>' +
+      '<td><span style="font-family:\'DM Mono\',monospace;font-size:11px">' + s.session_id + '</span>' + (s.pesquisador ? '<br><span style="font-size:10px;color:var(--d-ink-soft)">' + s.pesquisador + '</span>' : '') + '</td>' +
+      '<td style="font-family:\'DM Mono\',monospace;font-size:10.5px;color:var(--d-ink-soft)">' + (s.data||'—') + '<br>' + (s.horario||'') + '</td>' +
+      '<td style="font-size:11.5px">' + (s.loja||'—') + '</td>' +
+      '<td><span class="chip-sm">' + (s.segmento||'—') + '</span></td>' +
+      '<td><span class="chip-sm">' + lbl('obs-age',s['obs-age']) + '</span></td>' +
+      '<td><span class="chip-sm">' + lbl('tela-tipo',s['tela-tipo']) + '</span></td>' +
+      '<td style="font-size:11px">' + (s['terminal-marca']||'—') + '</td>' +
+      '<td><span class="chip-sm">' + lbl('obs-itens',s['obs-itens']) + '</span></td>' +
+      '<td style="font-size:11.5px">' + lbl('freq',s.freq) + '</td>' +
+      '<td><span class="score-pill s' + score + '">' + (score||'—') + '</span></td>' +
+      '<td><span class="prob-dot ' + pCls + '"></span>' + lbl('teve-prob',s['teve-prob']) + '</td>' +
+      '<td>' + etapas.slice(0,2).map(e => '<span class="chip-sm" style="margin:1px">' + e + '</span>').join('') + (etapas.length>2 ? '<span style="font-size:10px;color:var(--d-ink-soft)"> +' + (etapas.length-2) + '</span>' : '') + '</td>' +
+      '<td style="font-size:11.5px">' + lbl('reuso',s.reuso) + '</td>' +
+      '<td><button onclick="event.stopPropagation();delSession(\'' + s.session_id + '\')" style="background:none;border:none;cursor:pointer;color:var(--d-red);font-size:13px;padding:2px 6px">✕</button></td>' +
+    '</tr>' +
+    '<tr class="row-expand" id="drow-' + i + '">' +
+      '<td colspan="15"><div class="expand-inner"><div class="expand-grid">' +
+        '<div><div class="expand-label">Experiência Geral</div><div class="expand-val">' + (s['exp-geral']||'—') + '★ — ' + lbl('freq',s.freq) + '</div></div>' +
+        '<div><div class="expand-label">Motivo da escolha</div><div class="expand-val">' + lbl('motivo',s.motivo) + '</div></div>' +
+        '<div><div class="expand-label">Problema relatado</div><div class="expand-val">' + lbl('teve-prob',s['teve-prob']) + ' — ' + lbl('resolucao',s.resolucao) + '</div></div>' +
+        '<div><div class="expand-label">Áudio</div><div class="expand-val">' + lbl('audio',s.audio) + (s['audio-ajudou'] ? ' · ' + lbl('audio-ajudou',s['audio-ajudou']) : '') + '</div></div>' +
+        '<div><div class="expand-label">Fala literal</div><div class="expand-val q">' + (s.verbatim||'—') + '</div></div>' +
+        '<div><div class="expand-label">Uma mudança</div><div class="expand-val q">' + (s['uma-mudanca']||'—') + '</div></div>' +
+        '<div><div class="expand-label">Momento de confusão</div><div class="expand-val">' + (s['momento-perdido']||'—') + '</div></div>' +
+        '<div><div class="expand-label">Notas do pesquisador</div><div class="expand-val">' + (s['notas-pesq']||'—') + '</div></div>' +
+      '</div></div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function toggleRow(i) {
+  const row = document.getElementById('drow-' + i);
+  if (row) row.classList.toggle('open');
+}
+
+function delSession(id) {
+  sessions = sessions.filter(s => s.session_id !== id);
+  saveSessions();
+  updateTabBadge();
+  renderDash();
+  showToast('Sessão removida.');
 }
 
 function renderVerbatims() {

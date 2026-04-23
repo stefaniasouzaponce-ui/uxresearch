@@ -1504,11 +1504,29 @@ async function pullFromSheets(silent) {
     if (data.ok) {
       const remote    = data.sessions || [];
       const remoteIds = new Set(remote.map(s => s.session_id));
-      // Pendentes locais que ainda não chegaram no Sheets
-      const pending   = getQueue().filter(s => !remoteIds.has(s.session_id));
 
-      // Sheets é a fonte de verdade — substitui tudo, mantém só os pendentes locais
-      sessions = [...remote, ...pending];
+      // Pendentes locais que ainda não chegaram no Sheets
+      const pending = getQueue().filter(s => !remoteIds.has(s.session_id));
+
+      // Merge: para sessões que existem nos dois lados, preserva campos locais
+      // que o Sheets ainda não tem (ex: tela-tipo, terminal-marca antes da coluna ser criada)
+      const localById = {};
+      sessions.forEach(s => { localById[s.session_id] = s; });
+
+      const merged = remote.map(remoteSession => {
+        const local = localById[remoteSession.session_id];
+        if (!local) return remoteSession;
+        // Preserva campos locais onde o Sheets retornou vazio
+        const result = Object.assign({}, remoteSession);
+        Object.keys(local).forEach(k => {
+          if ((!result[k] || result[k] === '') && local[k]) {
+            result[k] = local[k];
+          }
+        });
+        return result;
+      });
+
+      sessions = [...merged, ...pending];
       saveSessions();
       localStorage.setItem(LS_LAST_SYNC, new Date().toISOString());
 
@@ -1520,7 +1538,7 @@ async function pullFromSheets(silent) {
       if (pending.length > 0) {
         setSyncStatus('warn',
           '<strong>' + remote.length + ' sessões</strong> · ' + pending.length + ' pendente(s) — enviando...');
-        syncNow(); // tenta esvaziar a fila imediatamente
+        syncNow();
       } else {
         const ts = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
         setSyncStatus('ok',

@@ -715,6 +715,7 @@ textarea::placeholder { color: var(--ink-mute); }
     <div class="sf"><label>Data</label><input type="date" id="f-date" class="fw120"></div>
     <div class="sf"><label>Horário</label><input type="time" id="f-time" class="fw80"></div>
     <div class="sf"><label>Loja / Unidade</label><input type="text" id="f-store" class="fw160" placeholder="Ex: Pinheiros #12"></div>
+    <div class="sf"><label>Marca do Terminal</label><input type="text" id="terminal-marca" class="fw120" placeholder="Ex: NCR, Self..."></div>
     <div class="sf"><label>Segmento</label>
       <select id="f-segmento" class="fw120" style="font-family:'Nunito',sans-serif;font-size:12.5px;font-weight:600;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--ink);outline:none;cursor:pointer;transition:border-color .15s">
         <option value="">—</option>
@@ -760,6 +761,13 @@ textarea::placeholder { color: var(--ink-mute); }
             <input class="chip" type="radio" name="obs-age" id="a1" value="adolescente"><label for="a1">Adolescente</label>
             <input class="chip" type="radio" name="obs-age" id="a2" value="adulto"><label for="a2">Adulto</label>
             <input class="chip" type="radio" name="obs-age" id="a3" value="idoso"><label for="a3">Idoso</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Tipo de tela do terminal <span class="obs-tag">obs</span></span>
+          <div class="chips">
+            <input class="chip" type="radio" name="tela-tipo" id="tt1" value="horizontal"><label for="tt1">Horizontal</label>
+            <input class="chip" type="radio" name="tela-tipo" id="tt2" value="vertical"><label for="tt2">Vertical</label>
           </div>
         </div>
         <div class="qb">
@@ -1053,7 +1061,7 @@ textarea::placeholder { color: var(--ink-mute); }
             <table class="d-table" id="d-table">
               <thead><tr>
                 <th></th><th>Sessão</th><th>Data</th><th>Loja</th>
-                <th>Segmento</th><th>Perfil</th><th>Itens</th><th>Freq.</th><th>Nota</th>
+                <th>Segmento</th><th>Perfil</th><th>Tela</th><th>Marca</th><th>Itens</th><th>Freq.</th><th>Nota</th>
                 <th>Problema</th><th>Etapa difícil</th><th>Reuso</th><th></th>
               </tr></thead>
               <tbody id="d-tbody"></tbody>
@@ -1185,6 +1193,7 @@ const LBL = {
   reuso: {'sim-sempre':'Sim, sempre','depende-fila':'Depende da fila','talvez':'Talvez','prefiro-caixa':'Prefiro caixa'},
   'obs-age': {'adolescente':'Adolescente','adulto':'Adulto','idoso':'Idoso','Adolescente':'Adolescente','Adulto':'Adulto','Idoso':'Idoso','18-30':'Adolescente / Adulto','31-45':'Adulto','46-60':'Adulto / Idoso','60+':'Idoso'},
   'obs-itens': {'1-5':'1–5 itens','6-15':'6–15 itens','16+':'16+ itens','1–5':'1–5 itens','6–15':'6–15 itens'},
+  'tela-tipo': {'horizontal':'Horizontal','vertical':'Vertical'},
   clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
   'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
   audio: {'sem-audio':'Self sem áudio','tinha-usou':'Tinha e usou','tinha-ignorou':'Tinha e ignorou','nao-percebeu':'Não percebeu'},
@@ -1301,7 +1310,7 @@ function collectData() {
     chks[cb.name].push(cb.value);
   });
   Object.keys(chks).forEach(k => d[k] = chks[k].join('|'));
-  ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
+  ['obs-nota','terminal-marca','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
     const el = document.getElementById(id);
     if (el) d[id] = el.value;
   });
@@ -1646,6 +1655,8 @@ function buildDonut(title, segments, note) {
 }
 
 // ── renderOverview ──────────────────────────────────────────
+
+// ── renderOverview ──────────────────────────────────────────
 function renderOverview() {
   const oc = document.getElementById('d-ov-content');
   const oe = document.getElementById('d-ov-empty');
@@ -1653,7 +1664,6 @@ function renderOverview() {
   if (!sessions.length) { oc.style.display='none'; oe.style.display='flex'; return; }
   oc.style.display = 'block'; oe.style.display = 'none';
 
-  // Visão Geral considera apenas sessões do Modo Entrevista completo
   const data = filteredSessions().filter(s => !s.modo || s.modo === 'entrevista');
   const n = data.length;
 
@@ -1667,21 +1677,19 @@ function renderOverview() {
     return;
   }
 
-  // ── KPIs ────────────────────────────────────────────────
-  const avgScore   = avg(data, s => parseInt(s['exp-geral']) || null);
-  const nProblems  = count(data, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
-  const nBastante  = count(data, s => s['teve-prob']==='bastante');
-  const nAtt       = count(data, s => (s.resolucao||'').includes('atendente')||(s['obs-comp']||'').includes('chamou-atendente'));
-  const nFluido    = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
-  const nSemAudio  = count(data, s => s.audio==='sem-audio');
-  const nComAudio  = n - nSemAudio;
-  const nReuso     = count(data, s => s.reuso==='sim-sempre');
-  const nDesiste   = count(data, s => s.reuso==='prefiro-caixa');
-  const lojas      = [...new Set(data.map(s=>s.loja).filter(Boolean))].length;
-  const segmentos  = [...new Set(data.map(s=>s.segmento).filter(Boolean))];
+  const avgScore  = avg(data, s => parseInt(s['exp-geral']) || null);
+  const nProblems = count(data, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
+  const nBastante = count(data, s => s['teve-prob']==='bastante');
+  const nAtt      = count(data, s => (s.resolucao||'').includes('atendente')||(s['obs-comp']||'').includes('chamou-atendente'));
+  const nFluido   = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
+  const nSemAudio = count(data, s => s.audio==='sem-audio');
+  const nComAudio = n - nSemAudio;
+  const nReuso    = count(data, s => s.reuso==='sim-sempre');
+  const nDesiste  = count(data, s => s.reuso==='prefiro-caixa');
+  const lojas     = [...new Set(data.map(s=>s.loja).filter(Boolean))].length;
+  const segmentos = [...new Set(data.map(s=>s.segmento).filter(Boolean))];
 
-  // Score color for avg
-  const avgN = parseFloat(avgScore);
+  const avgN     = parseFloat(avgScore);
   const avgColor = avgN >= 4 ? 'var(--d-green)' : avgN >= 3 ? 'var(--d-amber)' : 'var(--d-red)';
 
   document.getElementById('d-stats').innerHTML = `
@@ -1696,7 +1704,7 @@ function renderOverview() {
       <div class="stat-sub" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:6px">
         ${[1,2,3,4,5].map(v => {
           const c = count(data, s => parseInt(s['exp-geral'])===v);
-          return `<span style="font-size:10px;font-family:'DM Mono',monospace;background:${SCORE_COLORS[v]}22;color:${SCORE_COLORS[v]};padding:1px 5px;border-radius:4px">${v}★ ${c}</span>`;
+          return '<span style="font-size:10px;font-family:\'DM Mono\',monospace;background:'+SCORE_COLORS[v]+'22;color:'+SCORE_COLORS[v]+';padding:1px 5px;border-radius:4px">'+v+'★ '+c+'</span>';
         }).join('')}
       </div>
     </div>
@@ -1722,7 +1730,6 @@ function renderOverview() {
     </div>
   `;
 
-  // ── Row 1: Notas + Frequência ────────────────────────────
   const sd = [1,2,3,4,5].map(v => count(data, s => parseInt(s['exp-geral'])===v));
   document.getElementById('d-charts1').innerHTML = `
     <div class="chart-card">
@@ -1743,7 +1750,6 @@ function renderOverview() {
       s => s.freq
     )}`;
 
-  // ── Row 2: Problemas + Reuso ─────────────────────────────
   document.getElementById('d-charts2').innerHTML =
     buildBarChart('Severidade dos Problemas',
       ['nao','pequeno','bastante'],
@@ -1758,18 +1764,16 @@ function renderOverview() {
       s => s.reuso
     );
 
-  // ── Row 3: Áudio + Motivo da escolha ────────────────────
   const audioData = [
     { label:'Self sem áudio',  value: count(data, s=>s.audio==='sem-audio'),    color:'#3D6E84' },
     { label:'Tinha e usou',    value: count(data, s=>s.audio==='tinha-usou'),   color:'#2EDAAC' },
     { label:'Tinha, ignorou',  value: count(data, s=>s.audio==='tinha-ignorou'),color:'#F5A623' },
     { label:'Não percebeu',    value: count(data, s=>s.audio==='nao-percebeu'), color:'#F87171' },
   ];
-  const audioUsouCount = count(data, s=>s.audio==='tinha-usou'||s.audio==='tinha-ignorou');
-  const audioAjudouCount = count(data, s=>s['audio-ajudou']==='sim-muito'||s['audio-ajudou']==='um-pouco');
-
-  const audioNote = audioUsouCount > 0
-    ? `${audioAjudouCount} de ${audioUsouCount} que tiveram áudio acharam útil (${pct(audioAjudouCount,audioUsouCount)}%)`
+  const audioUsouCount    = count(data, s=>s.audio==='tinha-usou'||s.audio==='tinha-ignorou');
+  const audioAjudouCount  = count(data, s=>s['audio-ajudou']==='sim-muito'||s['audio-ajudou']==='um-pouco');
+  const audioNote         = audioUsouCount > 0
+    ? audioAjudouCount + ' de ' + audioUsouCount + ' que tiveram áudio acharam útil (' + pct(audioAjudouCount,audioUsouCount) + '%)'
     : null;
 
   document.getElementById('d-charts3').innerHTML =
@@ -1781,141 +1785,75 @@ function renderOverview() {
       s => s.motivo
     );
 
-  // ── Row 4: Perfil + Volume de Itens + Segmento ─────────────
   const charts4El = document.getElementById('d-charts4');
   if (charts4El) {
     charts4El.innerHTML =
-      `<div class="chart-card">
-        <div class="chart-title">Perfil Estimado dos Usuários</div>
-        ${buildBarChartInner(data, n,
-          ['adolescente','adulto','idoso'],
-          ['Adolescente','Adulto','Idoso'],
-          ['#AFF6FF','#60A5FA','#F5A623'],
-          s => s['obs-age']
-        )}
-      </div>` +
-      `<div class="chart-card">
-        <div class="chart-title">Volume de Itens por Sessão</div>
-        ${buildBarChartInner(data, n,
-          ['1-5','6-15','16+'],
-          ['1–5 itens','6–15 itens','16+ itens'],
-          ['#2EDAAC','#60A5FA','#F5A623'],
-          s => s['obs-itens']
-        )}
-      </div>`;
+      '<div class="chart-card"><div class="chart-title">Perfil Estimado dos Usuários</div>' +
+      buildBarChartInner(data, n, ['adolescente','adulto','idoso'], ['Adolescente','Adulto','Idoso'], ['#AFF6FF','#60A5FA','#F5A623'], s => s['obs-age']) +
+      '</div>' +
+      '<div class="chart-card"><div class="chart-title">Volume de Itens por Sessão</div>' +
+      buildBarChartInner(data, n, ['1-5','6-15','16+'], ['1–5 itens','6–15 itens','16+ itens'], ['#2EDAAC','#60A5FA','#F5A623'], s => s['obs-itens']) +
+      '</div>';
   }
 
-  // ── Row 5: Segmento ─────────────────────────────────────
   let charts5El = document.getElementById('d-charts5');
   if (!charts5El) {
     charts5El = document.createElement('div');
     charts5El.id = 'd-charts5';
     charts5El.className = 'charts-row';
     charts5El.style.marginBottom = '12px';
-    document.getElementById('d-charts4').after(charts5El);
+    const c4 = document.getElementById('d-charts4');
+    if (c4) c4.after(charts5El);
   }
-  charts5El.innerHTML =
-    `<div class="chart-card">
-      <div class="chart-title">Segmento das Lojas Visitadas</div>
-      ${buildBarChartInner(data, n,
-        ['Atacado','Varejo','Atacarejo'],
-        ['Atacado','Varejo','Atacarejo'],
-        ['#2EDAAC','#60A5FA','#F5A623'],
-        s => s.segmento
-      )}
-    </div>`;
+  if (charts5El) {
+    charts5El.innerHTML =
+      '<div class="chart-card"><div class="chart-title">Tipo de Tela do Terminal</div>' +
+      buildBarChartInner(data, n, ['horizontal','vertical'], ['Horizontal','Vertical'], ['#60A5FA','#F5A623'], s => s['tela-tipo']) +
+      '</div>' +
+      '<div class="chart-card"><div class="chart-title">Segmento das Lojas Visitadas</div>' +
+      buildBarChartInner(data, n, ['Atacado','Varejo','Atacarejo'], ['Atacado','Varejo','Atacarejo'], ['#2EDAAC','#60A5FA','#F5A623'], s => s.segmento) +
+      '</div>';
+  }
 
-  // ── Divergência: dentro das entrevistas, obs silenciosa vs relato ──
-  // Usa apenas as sessões de entrevista (data) — mesma sessão, mesmo usuário
   const divEl = document.getElementById('d-divergencia');
   if (divEl) {
     if (!n) { divEl.innerHTML = ''; }
     else {
-      // Lado esquerdo: o que o pesquisador registrou silenciosamente durante a entrevista
       const dAtend  = count(data, s => (s['obs-comp']||'').includes('chamou-atendente'));
       const dErro   = count(data, s => (s['obs-comp']||'').includes('erro-visivel'));
       const dSacola = count(data, s => (s['obs-comp']||'').includes('sacola-balanca'));
       const dPgto   = count(data, s => (s['obs-comp']||'').includes('pgto-multiplo'));
       const dPausa  = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
       const dReleu  = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
-
-      // Lado direito: o que o usuário relatou nas perguntas da mesma entrevista
       const nRelTot = count(data, s => s['teve-prob']==='bastante'||s['teve-prob']==='pequeno');
-      const nObsTot = count(data, s => {
-        const c = s['obs-comp']||'';
-        return c.includes('chamou-atendente')||c.includes('erro-visivel')||
-               c.includes('sacola-balanca')||c.includes('pgto-multiplo');
-      });
-      const divNum = nObsTot - nRelTot;
+      const nObsTot = count(data, s => { const c=s['obs-comp']||''; return c.includes('chamou-atendente')||c.includes('erro-visivel')||c.includes('sacola-balanca')||c.includes('pgto-multiplo'); });
+      const divNum  = nObsTot - nRelTot;
 
-      divEl.innerHTML = `
-        <div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">
-          <div class="chart-title" style="display:flex;align-items:center;gap:10px">
-            Divergência — Observado vs Relatado
-            <span style="font-family:'DM Mono',monospace;font-size:10px;font-weight:400;
-              padding:2px 10px;border-radius:10px;
-              background:${divNum>0?'rgba(248,113,113,.15)':'rgba(46,218,172,.15)'};
-              color:${divNum>0?'var(--d-red)':'var(--d-green)'}">
-              ${divNum>0?'+'+divNum:divNum} diferença
-            </span>
-          </div>
-          <div class="chart-note">
-            Comparação dentro das mesmas entrevistas — o que o pesquisador registrou silenciosamente vs o que o usuário relatou quando perguntado.
-            Quando observado &gt; relatado, o usuário normalizou a fricção sem percebê-la como problema.
-            <span style="opacity:.6">· ${n} entrevistas</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">
-            <div>
-              <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;
-                letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">
-                👁 Pesquisador observou silenciosamente
-              </div>
-              ${[
-                { label:'Chamou atendente',          v:dAtend,  c:'#F87171' },
-                { label:'Erro visível no terminal',  v:dErro,   c:'#F87171' },
-                { label:'Prob. sacola / balança',    v:dSacola, c:'#F5A623' },
-                { label:'Múltiplas tentativas pgto', v:dPgto,   c:'#F5A623' },
-                { label:'Pausas longas',             v:dPausa,  c:'#60A5FA' },
-                { label:'Releu a tela',              v:dReleu,  c:'#60A5FA' },
-              ].map(({label,v,c}) => `
-                <div class="bar-row">
-                  <span class="bar-label">${label}</span>
-                  <div class="bar-track">
-                    <div class="bar-fill" style="width:${pct(v,n)}%;background:${c}">
-                      ${v>0?`<span class="bar-val">${v}</span>`:''}
-                    </div>
-                  </div>
-                  <span class="bar-pct">${pct(v,n)}%</span>
-                </div>`).join('')}
-            </div>
-            <div>
-              <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;
-                letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">
-                🎤 Mesmo usuário relatou quando perguntado
-              </div>
-              ${buildBarChartInner(data, n,
-                ['nao','pequeno','bastante'],
-                ['Sem problema','Problema pequeno','Bastante dificuldade'],
-                ['#2EDAAC','#F5A623','#F87171'],
-                s => s['teve-prob']
-              )}
-            </div>
-          </div>
-        </div>`;
+      divEl.innerHTML =
+        '<div class="chart-card" style="margin-bottom:12px;border-left:3px solid var(--d-cyan)">' +
+        '<div class="chart-title" style="display:flex;align-items:center;gap:10px">Divergência — Observado vs Relatado' +
+        '<span style="font-family:\'DM Mono\',monospace;font-size:10px;font-weight:400;padding:2px 10px;border-radius:10px;background:' + (divNum>0?'rgba(248,113,113,.15)':'rgba(46,218,172,.15)') + ';color:' + (divNum>0?'var(--d-red)':'var(--d-green)') + '">' + (divNum>0?'+'+divNum:divNum) + ' diferença</span></div>' +
+        '<div class="chart-note">Comparação dentro das mesmas entrevistas — o que o pesquisador registrou silenciosamente vs o que o usuário relatou. · ' + n + ' entrevistas</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">' +
+        '<div><div style="font-family:\'DM Mono\',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">👁 Pesquisador observou silenciosamente</div>' +
+        [['Chamou atendente',dAtend,'#F87171'],['Erro visível no terminal',dErro,'#F87171'],['Prob. sacola / balança',dSacola,'#F5A623'],['Múltiplas tentativas pgto',dPgto,'#F5A623'],['Pausas longas',dPausa,'#60A5FA'],['Releu a tela',dReleu,'#60A5FA']].map(function(r){
+          return '<div class="bar-row"><span class="bar-label">'+r[0]+'</span><div class="bar-track"><div class="bar-fill" style="width:'+pct(r[1],n)+'%;background:'+r[2]+'">'+(r[1]>0?'<span class="bar-val">'+r[1]+'</span>':'')+'</div></div><span class="bar-pct">'+pct(r[1],n)+'%</span></div>';
+        }).join('') +
+        '</div><div><div style="font-family:\'DM Mono\',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--d-ink-soft);margin-bottom:10px">🎤 Mesmo usuário relatou quando perguntado</div>' +
+        buildBarChartInner(data, n, ['nao','pequeno','bastante'], ['Sem problema','Problema pequeno','Bastante dificuldade'], ['#2EDAAC','#F5A623','#F87171'], s => s['teve-prob']) +
+        '</div></div></div>';
     }
   }
 
-  // ── Friction heatmap ─────────────────────────────────────
-  const eKeys = Object.keys(ETAPAS).filter(k => k !== 'nenhuma');
-  const eData = eKeys.map(k => count(data, s => (s.etapa||'').split('|').includes(k)));
-  const maxE  = Math.max(...eData, 1);
-  // Sort by frequency descending
+  const eKeys  = Object.keys(ETAPAS).filter(k => k !== 'nenhuma');
+  const eData  = eKeys.map(k => count(data, s => (s.etapa||'').split('|').includes(k)));
+  const maxE   = Math.max(...eData, 1);
   const sorted = eKeys.map((k,i) => ({ k, v: eData[i] })).sort((a,b) => b.v-a.v);
 
   document.getElementById('d-friction').innerHTML = `
     <div class="chart-card">
       <div class="chart-title" style="display:flex;align-items:center;gap:8px">
-        <span>Mapa de Fricções</span>
+        Mapa de Fricções
         <span style="font-size:10px;font-weight:400;color:var(--d-ink-soft);font-family:'DM Mono',monospace">etapas problemáticas — ordem por frequência</span>
       </div>
       <div class="friction-grid">
@@ -1931,87 +1869,16 @@ function renderOverview() {
 
     <div class="chart-card" style="margin-top:12px">
       <div class="chart-title">Comportamentos Observados no Terminal</div>
-      ${Object.entries(OBS_COMP).filter(([k]) => k !== 'sem-problema').map(([k, lbl]) => {
-        const v = count(data, s => (s['obs-comp']||'').split('|').includes(k));
-        const w = pct(v, n);
+      ${Object.entries(OBS_COMP).filter(([k]) => k !== 'sem-problema').map(([k, label]) => {
+        const v   = count(data, s => (s['obs-comp']||'').split('|').includes(k));
+        const w   = pct(v, n);
         const col = k==='chamou-atendente'||k==='erro-visivel'||k==='pgto-multiplo' ? '#F87171'
                   : k==='pausas-longas'||k==='releu-tela' ? '#F5A623' : '#60A5FA';
-        return `<div class="bar-row">
-          <span class="bar-label">${lbl}</span>
-          <div class="bar-track">
-            <div class="bar-fill" style="width:${w}%;background:${col}">
-              ${v>0?`<span class="bar-val">${v}</span>`:''}
-            </div>
-          </div>
-          <span class="bar-pct">${w}%</span>
-        </div>`;
+        return '<div class="bar-row"><span class="bar-label">'+label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+col+'">'+(v>0?'<span class="bar-val">'+v+'</span>':'')+'</div></div><span class="bar-pct">'+w+'%</span></div>';
       }).join('')}
     </div>`;
 }
 
-// ================================
-// SESSIONS TABLE
-// ================================
-function renderSessTable() {
-  const empty = document.getElementById('d-sess-empty');
-  const wrap = document.getElementById('d-table-wrap');
-  if (!empty || !wrap) return;
-  if (!sessions.length) { empty.style.display='flex'; wrap.style.display='none'; return; }
-  const data = filteredSessions();
-  if (!data.length) {
-    empty.style.display='none'; wrap.style.display='block';
-    document.getElementById('d-tbody').innerHTML = '<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</td></tr>';
-    return;
-  }
-  empty.style.display = 'none'; wrap.style.display = 'block';
-
-  document.getElementById('d-tbody').innerHTML = data.map((s, i) => {
-    const score = parseInt(s['exp-geral']) || 0;
-    const etapas = (s.etapa||'').split('|').filter(Boolean).map(k => ETAPAS[k]||k);
-    const pCls = {'nao':'pnao','pequeno':'ppeq','bastante':'pbas'}[s['teve-prob']] || '';
-    return `<tr onclick="toggleRow(${i})">
-      <td style="color:var(--d-ink-soft);font-size:11px;padding-left:12px">▶</td>
-      <td><span style="font-family:'DM Mono',monospace;font-size:11px">${s.session_id}</span>${s.pesquisador?`<br><span style="font-size:10px;color:var(--d-ink-soft)">${s.pesquisador}</span>`:''}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--d-ink-soft)">${s.data||'—'}<br>${s.horario||''}</td>
-      <td style="font-size:11.5px">${s.loja||'—'}</td>
-      <td><span class="chip-sm">${s.segmento||'—'}</span></td>
-      <td><span class="chip-sm">${lbl('obs-age',s['obs-age'])}</span></td>
-      <td><span class="chip-sm">${lbl('obs-itens',s['obs-itens'])}</span></td>
-      <td style="font-size:11.5px">${lbl('freq',s.freq)}</td>
-      <td><span class="score-pill s${score}">${score||'—'}</span></td>
-      <td><span class="prob-dot ${pCls}"></span>${lbl('teve-prob',s['teve-prob'])}</td>
-      <td>${etapas.slice(0,2).map(e=>`<span class="chip-sm" style="margin:1px">${e}</span>`).join('')}${etapas.length>2?`<span style="font-size:10px;color:var(--d-ink-soft)"> +${etapas.length-2}</span>`:''}</td>
-      <td style="font-size:11.5px">${lbl('reuso',s.reuso)}</td>
-      <td><button class="del-btn" onclick="event.stopPropagation();delSession('${s.session_id}')">✕</button></td>
-    </tr>
-    <tr class="row-expand" id="drow-${i}">
-      <td colspan="13">
-        <div class="expand-inner">
-          <div class="expand-grid">
-            <div><div class="expand-label">Verbatim — dificuldade</div><div class="expand-val q">${s.verbatim||'(vazio)'}</div></div>
-            <div><div class="expand-label">Uma mudança</div><div class="expand-val q">${s['uma-mudanca']||'(vazio)'}</div></div>
-            <div><div class="expand-label">Nota de campo</div><div class="expand-val">${s['obs-nota']||'—'}</div></div>
-            <div><div class="expand-label">Momento de confusão</div><div class="expand-val">${s['momento-perdido']||'—'}</div></div>
-            <div style="grid-column:1/-1"><div class="expand-label">Notas do pesquisador</div><div class="expand-val">${s['notas-pesq']||'—'}</div></div>
-          </div>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function toggleRow(i) { document.getElementById('drow-'+i).classList.toggle('open'); }
-
-function delSession(id) {
-  sessions = sessions.filter(s => s.session_id !== id);
-  selectedIds.delete(id);
-  saveSessions(); updateTabBadge(); renderDash();
-  showToast('Sessão removida.');
-}
-
-// ================================
-// VERBATIMS
-// ================================
 // ================================
 // OBSERVAÇÕES DE CAMPO
 // ================================
@@ -2020,10 +1887,8 @@ function renderField() {
   const content = document.getElementById('d-field-content');
   if (!empty || !content) return;
 
-  // Apenas sessões do modo Só Observação
   const data = filteredSessions().filter(s => s.modo === 'observacao');
   const n    = data.length;
-
 
   if (!n) {
     empty.style.display = 'flex';
@@ -2034,99 +1899,57 @@ function renderField() {
   }
   empty.style.display = 'none';
 
-  // ── KPIs de observação ───────────────────────────────────
-  const nFluido   = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
-  const nHesitou  = count(data, s => (s['obs-comp']||'').includes('hesitou-inicio'));
-  const nAtend    = count(data, s => (s['obs-comp']||'').includes('chamou-atendente'));
-  const nErro     = count(data, s => (s['obs-comp']||'').includes('erro-visivel'));
-  const nSacola   = count(data, s => (s['obs-comp']||'').includes('sacola-balanca'));
-  const nPgto     = count(data, s => (s['obs-comp']||'').includes('pgto-multiplo'));
-  const nPausa    = count(data, s => (s['obs-comp']||'').includes('pausas-longas'));
-  const nReleu    = count(data, s => (s['obs-comp']||'').includes('releu-tela'));
+  const nFluido  = count(data, s => (s['obs-comp']||'').includes('sem-problema'));
+  const nHesitou = count(data, s => (s['obs-comp']||'').includes('hesitou-inicio'));
+  const nAtend   = count(data, s => (s['obs-comp']||'').includes('chamou-atendente'));
+  const nErro    = count(data, s => (s['obs-comp']||'').includes('erro-visivel'));
+  const nSacola  = count(data, s => (s['obs-comp']||'').includes('sacola-balanca'));
+  const lojas    = [...new Set(data.map(s => s.loja).filter(Boolean))].length;
 
-  // ── KPI cards ───────────────────────────────────────────
-  const lojas = [...new Set(data.map(s => s.loja).filter(Boolean))].length;
-  const kpis = `
-    <div class="stats-grid" style="margin-bottom:14px">
-      <div class="stat-card" style="border-top:3px solid var(--d-cyan)">
-        <div class="stat-label">Sessões observadas</div>
-        <div class="stat-value" style="color:var(--d-cyan)">${n}</div>
-        <div class="stat-sub">${lojas} loja(s) · só observação</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-green)">
-        <div class="stat-label">Uso fluido</div>
-        <div class="stat-value" style="color:var(--d-green)">${nFluido}</div>
-        <div class="stat-sub">${pct(nFluido,n)}% sem nenhum problema observado</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-amber)">
-        <div class="stat-label">Hesitaram ao iniciar</div>
-        <div class="stat-value" style="color:var(--d-amber)">${nHesitou}</div>
-        <div class="stat-sub">${pct(nHesitou,n)}% das sessões</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-red)">
-        <div class="stat-label">Chamaram atendente</div>
-        <div class="stat-value" style="color:var(--d-red)">${nAtend}</div>
-        <div class="stat-sub">${pct(nAtend,n)}% das sessões</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-red)">
-        <div class="stat-label">Erro visível no terminal</div>
-        <div class="stat-value" style="color:var(--d-red)">${nErro}</div>
-        <div class="stat-sub">${pct(nErro,n)}% das sessões</div>
-      </div>
-      <div class="stat-card" style="border-top:3px solid var(--d-amber)">
-        <div class="stat-label">Problema sacola/balança</div>
-        <div class="stat-value" style="color:var(--d-amber)">${nSacola}</div>
-        <div class="stat-sub">${pct(nSacola,n)}% das sessões</div>
-      </div>
-    </div>`;
-
-  // ── Perfil observado ─────────────────────────────────────
-  const row2 = `
-    <div class="charts-row" style="margin-bottom:12px">
-      <div class="chart-card">
-        <div class="chart-title">Perfil Etário Observado</div>
-        ${buildBarChartInner(data, n,
-          ['adolescente','adulto','idoso'],
-          ['Adolescente','Adulto','Idoso'],
-          ['#AFF6FF','#60A5FA','#F5A623'],
-          s => s['obs-age']
-        )}
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Volume de Itens Observado</div>
-        ${buildBarChartInner(data, n,
-          ['1-5','6-15','16+'],
-          ['1–5 itens','6–15 itens','16+ itens'],
-          ['#2EDAAC','#60A5FA','#F5A623'],
-          s => s['obs-itens']
-        )}
-      </div>
-    </div>`;
-
-  // ── Notas de campo ───────────────────────────────────────
-  const notas = data.filter(s => s['obs-nota'] && s['obs-nota'].trim().length > 3);
-  const notasHtml = notas.length ? `
-    <div class="chart-card">
-      <div class="chart-title">Notas de Campo — Momentos de Fricção Observados</div>
-      <div class="chart-note">${notas.length} sessão(ões) com nota registrada</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-        ${notas.map(s => `
-          <div style="background:var(--d-surface2);border-radius:8px;padding:13px 15px;border-left:3px solid var(--d-amber)">
-            <div style="font-size:13px;line-height:1.6;color:var(--d-ink)">${s['obs-nota']}</div>
-            <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">
-              <span class="vtag">${s.session_id}</span>
-              ${s.loja ? `<span class="vtag">${s.loja}</span>` : ''}
-              ${s['obs-age'] ? `<span class="vtag">${lbl('obs-age',s['obs-age'])}</span>` : ''}
-              ${s.data ? `<span class="vtag">${s.data}</span>` : ''}
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>` : '';
-
-  content.innerHTML = kpis + row2 + notasHtml;
+  content.innerHTML =
+    '<div class="stats-grid" style="margin-bottom:14px">' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-cyan)"><div class="stat-label">Sessões observadas</div><div class="stat-value" style="color:var(--d-cyan)">' + n + '</div><div class="stat-sub">' + lojas + ' loja(s) · só observação</div></div>' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-green)"><div class="stat-label">Uso fluido</div><div class="stat-value" style="color:var(--d-green)">' + nFluido + '</div><div class="stat-sub">' + pct(nFluido,n) + '% sem problema observado</div></div>' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-amber)"><div class="stat-label">Hesitaram ao iniciar</div><div class="stat-value" style="color:var(--d-amber)">' + nHesitou + '</div><div class="stat-sub">' + pct(nHesitou,n) + '% das sessões</div></div>' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-red)"><div class="stat-label">Chamaram atendente</div><div class="stat-value" style="color:var(--d-red)">' + nAtend + '</div><div class="stat-sub">' + pct(nAtend,n) + '% das sessões</div></div>' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-red)"><div class="stat-label">Erro visível</div><div class="stat-value" style="color:var(--d-red)">' + nErro + '</div><div class="stat-sub">' + pct(nErro,n) + '% das sessões</div></div>' +
+    '<div class="stat-card" style="border-top:3px solid var(--d-amber)"><div class="stat-label">Prob. sacola/balança</div><div class="stat-value" style="color:var(--d-amber)">' + nSacola + '</div><div class="stat-sub">' + pct(nSacola,n) + '% das sessões</div></div>' +
+    '</div>' +
+    '<div class="charts-row" style="margin-bottom:12px">' +
+    '<div class="chart-card"><div class="chart-title">Perfil Etário Observado</div>' + buildBarChartInner(data,n,['adolescente','adulto','idoso'],['Adolescente','Adulto','Idoso'],['#AFF6FF','#60A5FA','#F5A623'],s=>s['obs-age']) + '</div>' +
+    '<div class="chart-card"><div class="chart-title">Volume de Itens Observado</div>' + buildBarChartInner(data,n,['1-5','6-15','16+'],['1–5 itens','6–15 itens','16+ itens'],['#2EDAAC','#60A5FA','#F5A623'],s=>s['obs-itens']) + '</div>' +
+    '</div>' +
+    '<div class="charts-row" style="margin-bottom:12px">' +
+    '<div class="chart-card"><div class="chart-title">Tipo de Tela do Terminal</div>' + buildBarChartInner(data,n,['horizontal','vertical'],['Horizontal','Vertical'],['#60A5FA','#F5A623'],s=>s['tela-tipo']) + '</div>' +
+    '<div class="chart-card"><div class="chart-title">Marcas dos Terminais</div><div class="chart-note">Campo aberto — marcas identificadas em campo</div>' + buildMarcasChart(data,n) + '</div>' +
+    '</div>';
 }
 
-// helper interno para barras sem chart-card wrapper
+
+
+function buildMarcasChart(data, n) {
+  const marcas = {};
+  data.forEach(function(s) {
+    var m = (s['terminal-marca'] || '').trim();
+    if (m) marcas[m] = (marcas[m] || 0) + 1;
+  });
+  var entries = Object.entries(marcas).sort(function(a,b) { return b[1]-a[1]; });
+  if (!entries.length) return '<div class="chart-empty">Nenhuma marca registrada ainda</div>';
+  var maxM = entries[0][1];
+  return entries.map(function(entry) {
+    var marca = entry[0], v = entry[1];
+    return '<div class="bar-row">' +
+      '<span class="bar-label">' + marca + '</span>' +
+      '<div class="bar-track">' +
+        '<div class="bar-fill" style="width:' + (v/maxM*100) + '%;background:#AFF6FF">' +
+          (v > 0 ? '<span class="bar-val">' + v + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<span class="bar-pct">' + pct(v,n) + '%</span>' +
+    '</div>';
+  }).join('');
+}
+
 function buildBarChartInner(data, n, keys, labels, colors, getter) {
   const vals  = keys.map(k => count(data, s => getter(s) === k));
   const maxV  = Math.max(...vals, 1);

@@ -9,7 +9,7 @@ const SHEET_NAME = 'Sessões';
 
 const COLUMNS = [
   'session_id','data','horario','loja','segmento','pesquisador','modo',
-  'obs-age','obs-itens','obs-comp','obs-nota',
+  'obs-age','tela-tipo','terminal-marca','obs-itens','obs-comp','obs-nota',
   'freq','exp-geral','motivo',
   'teve-prob','etapa','verbatim','resolucao',
   'clareza','reacao-erro','audio','audio-ajudou','momento-perdido',

@@ -763,6 +763,17 @@ textarea::placeholder { color: var(--ink-mute); }
           </div>
         </div>
         <div class="qb">
+          <span class="q-label">Tipo de tela do terminal <span class="obs-tag">obs</span></span>
+          <div class="chips">
+            <input class="chip" type="radio" name="tela-tipo" id="tt1" value="horizontal"><label for="tt1">Horizontal</label>
+            <input class="chip" type="radio" name="tela-tipo" id="tt2" value="vertical"><label for="tt2">Vertical</label>
+          </div>
+        </div>
+        <div class="qb">
+          <span class="q-label">Marca do terminal <span class="obs-tag">obs</span></span>
+          <input class="open-input" type="text" id="terminal-marca" placeholder="Ex: NCR, Self, Bematech...">
+        </div>
+        <div class="qb">
           <span class="q-label">Volume de itens <span class="obs-tag">obs</span></span>
           <div class="chips">
             <input class="chip" type="radio" name="obs-itens" id="i1" value="1-5"><label for="i1">1–5 itens</label>
@@ -1053,7 +1064,7 @@ textarea::placeholder { color: var(--ink-mute); }
             <table class="d-table" id="d-table">
               <thead><tr>
                 <th></th><th>Sessão</th><th>Data</th><th>Loja</th>
-                <th>Segmento</th><th>Perfil</th><th>Itens</th><th>Freq.</th><th>Nota</th>
+                <th>Segmento</th><th>Perfil</th><th>Tela</th><th>Marca</th><th>Itens</th><th>Freq.</th><th>Nota</th>
                 <th>Problema</th><th>Etapa difícil</th><th>Reuso</th><th></th>
               </tr></thead>
               <tbody id="d-tbody"></tbody>
@@ -1185,6 +1196,7 @@ const LBL = {
   reuso: {'sim-sempre':'Sim, sempre','depende-fila':'Depende da fila','talvez':'Talvez','prefiro-caixa':'Prefiro caixa'},
   'obs-age': {'adolescente':'Adolescente','adulto':'Adulto','idoso':'Idoso','Adolescente':'Adolescente','Adulto':'Adulto','Idoso':'Idoso','18-30':'Adolescente / Adulto','31-45':'Adulto','46-60':'Adulto / Idoso','60+':'Idoso'},
   'obs-itens': {'1-5':'1–5 itens','6-15':'6–15 itens','16+':'16+ itens','1–5':'1–5 itens','6–15':'6–15 itens'},
+  'tela-tipo': {'horizontal':'Horizontal','vertical':'Vertical'},
   clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
   'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
   audio: {'sem-audio':'Self sem áudio','tinha-usou':'Tinha e usou','tinha-ignorou':'Tinha e ignorou','nao-percebeu':'Não percebeu'},
@@ -1301,7 +1313,7 @@ function collectData() {
     chks[cb.name].push(cb.value);
   });
   Object.keys(chks).forEach(k => d[k] = chks[k].join('|'));
-  ['obs-nota','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
+  ['obs-nota','terminal-marca','verbatim','uma-mudanca','notas-pesq','momento-perdido'].forEach(id => {
     const el = document.getElementById(id);
     if (el) d[id] = el.value;
   });
@@ -1802,6 +1814,15 @@ function renderOverview() {
           ['#2EDAAC','#60A5FA','#F5A623'],
           s => s['obs-itens']
         )}
+      </div>` +
+      `<div class="chart-card">
+        <div class="chart-title">Tipo de Tela do Terminal</div>
+        ${buildBarChartInner(data, n,
+          ['horizontal','vertical'],
+          ['Horizontal','Vertical'],
+          ['#60A5FA','#F5A623'],
+          s => s['tela-tipo']
+        )}
       </div>`;
   }
 
@@ -1976,6 +1997,8 @@ function renderSessTable() {
       <td style="font-size:11.5px">${s.loja||'—'}</td>
       <td><span class="chip-sm">${s.segmento||'—'}</span></td>
       <td><span class="chip-sm">${lbl('obs-age',s['obs-age'])}</span></td>
+      <td><span class="chip-sm">${lbl('tela-tipo',s['tela-tipo'])||'—'}</span></td>
+      <td style="font-size:11px">${s['terminal-marca']||'—'}</td>
       <td><span class="chip-sm">${lbl('obs-itens',s['obs-itens'])}</span></td>
       <td style="font-size:11.5px">${lbl('freq',s.freq)}</td>
       <td><span class="score-pill s${score}">${score||'—'}</span></td>
@@ -1985,7 +2008,7 @@ function renderSessTable() {
       <td><button class="del-btn" onclick="event.stopPropagation();delSession('${s.session_id}')">✕</button></td>
     </tr>
     <tr class="row-expand" id="drow-${i}">
-      <td colspan="13">
+      <td colspan="15">
         <div class="expand-inner">
           <div class="expand-grid">
             <div><div class="expand-label">Verbatim — dificuldade</div><div class="expand-val q">${s.verbatim||'(vazio)'}</div></div>
@@ -2100,6 +2123,41 @@ function renderField() {
           ['#2EDAAC','#60A5FA','#F5A623'],
           s => s['obs-itens']
         )}
+      </div>
+    </div>
+    <div class="charts-row" style="margin-bottom:12px">
+      <div class="chart-card">
+        <div class="chart-title">Tipo de Tela do Terminal</div>
+        ${buildBarChartInner(data, n,
+          ['horizontal','vertical'],
+          ['Horizontal','Vertical'],
+          ['#60A5FA','#F5A623'],
+          s => s['tela-tipo']
+        )}
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Marcas dos Terminais</div>
+        <div class="chart-note">Campo aberto — marcas identificadas em campo</div>
+        ${(() => {
+          const marcas = {};
+          data.forEach(s => {
+            const m = (s['terminal-marca']||'').trim();
+            if (m) marcas[m] = (marcas[m]||0) + 1;
+          });
+          const sorted = Object.entries(marcas).sort((a,b)=>b[1]-a[1]);
+          if (!sorted.length) return '<div class="chart-empty">Nenhuma marca registrada ainda</div>';
+          const maxM = sorted[0][1];
+          return sorted.map(([marca, v]) => \`
+            <div class="bar-row">
+              <span class="bar-label">\${marca}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:\${v/maxM*100}%;background:#AFF6FF">
+                  \${v>0?'<span class="bar-val">'+v+'</span>':''}
+                </div>
+              </div>
+              <span class="bar-pct">\${pct(v,n)}%</span>
+            </div>\`).join('');
+        })()}
       </div>
     </div>`;
 

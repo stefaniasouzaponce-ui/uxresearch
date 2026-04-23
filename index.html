@@ -985,7 +985,7 @@ textarea::placeholder { color: var(--ink-mute); }
 
       <div class="d-nav-section">
         <div class="d-nav-section-title">Navegação</div>
-        <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Visão Geral</button>
+        <button class="d-nav-btn active" id="dnav-overview" onclick="switchDashView('overview')"><span class="nav-icon">◈</span> Entrevistas</button>
         <button class="d-nav-btn" id="dnav-field" onclick="switchDashView('field')"><span class="nav-icon">👁</span> Observações</button>
         <button class="d-nav-btn" id="dnav-sessions" onclick="switchDashView('sessions')"><span class="nav-icon">☰</span> Sessões <span class="nav-count" id="d-count-badge">0</span></button>
         <button class="d-nav-btn" id="dnav-verbatims" onclick="switchDashView('verbatims')"><span class="nav-icon">❝</span> Verbatims</button>
@@ -997,7 +997,7 @@ textarea::placeholder { color: var(--ink-mute); }
     <!-- Main -->
     <main class="d-main">
       <div class="d-topbar">
-        <div class="d-page-title" id="d-page-title">Visão Geral</div>
+        <div class="d-page-title" id="d-page-title">Entrevistas</div>
       </div>
 
       <!-- FILTER BAR -->
@@ -1184,7 +1184,7 @@ const LBL = {
   resolucao: {'sozinho':'Sozinho','atendente':'Atendente','reiniciou':'Reiniciou','nao-resolveu':'Não resolveu'},
   reuso: {'sim-sempre':'Sim, sempre','depende-fila':'Depende da fila','talvez':'Talvez','prefiro-caixa':'Prefiro caixa'},
   'obs-age': {'adolescente':'Adolescente','adulto':'Adulto','idoso':'Idoso','Adolescente':'Adolescente','Adulto':'Adulto','Idoso':'Idoso','18-30':'Adolescente / Adulto','31-45':'Adulto','46-60':'Adulto / Idoso','60+':'Idoso'},
-  'obs-itens': {'1-5':'1–5 itens','6-15':'6–15','16+':'16+'},
+  'obs-itens': {'1-5':'1–5 itens','6-15':'6–15 itens','16+':'16+ itens','1–5':'1–5 itens','6–15':'6–15 itens'},
   clareza: {'muito-claras':'Muito claras','ok':'OK','confusas':'Confusas','nao-li':'Não leu'},
   'reacao-erro': {'li-resolvi':'Leu e resolveu','li-nao-entendi':'Não entendeu','chamei':'Chamou ajuda','sem-erro':'Sem erro'},
   audio: {'sem-audio':'Self sem áudio','tinha-usou':'Tinha e usou','tinha-ignorou':'Tinha e ignorou','nao-percebeu':'Não percebeu'},
@@ -1544,7 +1544,7 @@ function switchDashView(v) {
   document.querySelectorAll('.d-nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('dview-' + v).classList.add('active');
   document.getElementById('dnav-' + v).classList.add('active');
-  const titles = { overview:'Visão Geral', field:'Observações de Campo', sessions:'Sessões', verbatims:'Verbatims & Falas' };
+  const titles = { overview:'Entrevistas', field:'Observações de Campo', sessions:'Sessões', verbatims:'Verbatims & Falas' };
   document.getElementById('d-page-title').textContent = titles[v];
 }
 
@@ -1658,7 +1658,7 @@ function renderOverview() {
   const n = data.length;
 
   if (n === 0) {
-    ['d-stats','d-charts1','d-charts2','d-charts3','d-charts4','d-divergencia','d-friction'].forEach(id => {
+    ['d-stats','d-charts1','d-charts2','d-charts3','d-charts4','d-charts5','d-divergencia','d-friction'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = id==='d-stats'
         ? '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--d-ink-soft);font-size:13px">Nenhuma sessão corresponde aos filtros.</div>'
@@ -1781,7 +1781,7 @@ function renderOverview() {
       s => s.motivo
     );
 
-  // ── Row 4: Perfil Estimado ───────────────────────────────
+  // ── Row 4: Perfil + Volume de Itens + Segmento ─────────────
   const charts4El = document.getElementById('d-charts4');
   if (charts4El) {
     charts4El.innerHTML =
@@ -1795,15 +1795,35 @@ function renderOverview() {
         )}
       </div>` +
       `<div class="chart-card">
-        <div class="chart-title">Segmento das Lojas Visitadas</div>
+        <div class="chart-title">Volume de Itens por Sessão</div>
         ${buildBarChartInner(data, n,
-          ['Atacado','Varejo','Atacarejo'],
-          ['Atacado','Varejo','Atacarejo'],
+          ['1-5','6-15','16+'],
+          ['1–5 itens','6–15 itens','16+ itens'],
           ['#2EDAAC','#60A5FA','#F5A623'],
-          s => s.segmento
+          s => s['obs-itens']
         )}
       </div>`;
   }
+
+  // ── Row 5: Segmento ─────────────────────────────────────
+  let charts5El = document.getElementById('d-charts5');
+  if (!charts5El) {
+    charts5El = document.createElement('div');
+    charts5El.id = 'd-charts5';
+    charts5El.className = 'charts-row';
+    charts5El.style.marginBottom = '12px';
+    document.getElementById('d-charts4').after(charts5El);
+  }
+  charts5El.innerHTML =
+    `<div class="chart-card">
+      <div class="chart-title">Segmento das Lojas Visitadas</div>
+      ${buildBarChartInner(data, n,
+        ['Atacado','Varejo','Atacarejo'],
+        ['Atacado','Varejo','Atacarejo'],
+        ['#2EDAAC','#60A5FA','#F5A623'],
+        s => s.segmento
+      )}
+    </div>`;
 
   // ── Divergência: dentro das entrevistas, obs silenciosa vs relato ──
   // Usa apenas as sessões de entrevista (data) — mesma sessão, mesmo usuário
